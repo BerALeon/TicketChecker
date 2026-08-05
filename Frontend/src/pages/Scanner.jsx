@@ -8,37 +8,58 @@ import { validateTicket } from '../services/api';
 export default function Scanner() {
   const [scanResult, setScanResult] = useState(null);
   const [statusColor, setStatusColor] = useState('transparent');
+  const [isScannerActive, setIsScannerActive] = useState(false);
   const scannerRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const html5QrCode = new Html5Qrcode("reader");
-    scannerRef.current = html5QrCode;
-
-    const startScanner = async () => {
-      try {
-        await html5QrCode.start(
-          { facingMode: "environment" },
-          { fps: 10 },
-          onScanSuccess
-        );
-      } catch (err) {
-        console.error("Failed to start scanner", err);
-      }
-    };
-
-    startScanner();
+    scannerRef.current = new Html5Qrcode("reader");
 
     return () => {
-      if (scannerRef.current?.isScanning) {
-        scannerRef.current.stop().catch(console.error);
+      if (scannerRef.current) {
+        const state = scannerRef.current.getState();
+        if (state === 2 /* SCANNING */ || state === 3 /* PAUSED */) {
+          scannerRef.current.stop().catch(console.error);
+        }
       }
     };
   }, []);
 
+  const toggleScanner = async () => {
+    if (!scannerRef.current) return;
+
+    if (isScannerActive) {
+      try {
+        const state = scannerRef.current.getState();
+        if (state === 2 || state === 3) {
+          await scannerRef.current.stop();
+        }
+        setIsScannerActive(false);
+      } catch (e) {
+        console.error("Failed to stop scanner", e);
+      }
+    } else {
+      try {
+        await scannerRef.current.start(
+          { facingMode: "environment" },
+          { fps: 10 },
+          onScanSuccess
+        );
+        setIsScannerActive(true);
+      } catch (err) {
+        console.error("Failed to start scanner", err);
+      }
+    }
+  };
+
   const onScanSuccess = async (decodedText) => {
-    if (scannerRef.current?.isScanning) {
-      await scannerRef.current.stop();
+    try {
+      if (scannerRef.current?.getState() === 2 /* SCANNING */) {
+        await scannerRef.current.stop();
+        setIsScannerActive(false);
+      }
+    } catch (e) {
+      console.warn("Could not stop scanner", e);
     }
 
     try {
@@ -69,39 +90,15 @@ export default function Scanner() {
         setStatusColor('#2196F3'); // Solid Blue for offline
       }
 
-      // Resume scanning after 3 seconds
-      setTimeout(async () => {
-        setScanResult(null);
-        setStatusColor('transparent');
-        try {
-          if (scannerRef.current && !scannerRef.current.isScanning) {
-            await scannerRef.current.start(
-              { facingMode: "environment" },
-              { fps: 10 },
-              onScanSuccess
-            );
-          }
-        } catch (e) {
-          console.error("Resume failed", e);
-        }
-      }, 3000);
-
     } catch (e) {
       setScanResult({ status: 'ERROR', message: 'QR Inválido o formato incorrecto.' });
       setStatusColor('#F44336');
-
-      setTimeout(async () => {
-        setScanResult(null);
-        setStatusColor('transparent');
-        if (scannerRef.current && !scannerRef.current.isScanning) {
-          await scannerRef.current.start(
-            { facingMode: "environment" },
-            { fps: 10 },
-            onScanSuccess
-          );
-        }
-      }, 3000);
     }
+  };
+
+  const handleAcceptResult = () => {
+    setScanResult(null);
+    setStatusColor('transparent');
   };
 
   return (
@@ -125,11 +122,25 @@ export default function Scanner() {
 
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 2 }}>
         <Box sx={{ display: scanResult ? 'none' : 'block', width: '100%', maxWidth: 400, position: 'relative' }}>
-          <div className="scanner-container">
-            <div className="scanner-guides"></div>
-            <div className="scan-line"></div>
+          <div className="scanner-container" style={{ minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: isScannerActive ? 'transparent' : 'rgba(0,0,0,0.1)', borderRadius: '8px' }}>
+            {isScannerActive && (
+              <>
+                <div className="scanner-guides"></div>
+                <div className="scan-line"></div>
+              </>
+            )}
             <Box id="reader" sx={{ width: '100%', overflow: 'hidden', borderRadius: 2 }} />
           </div>
+          
+          <Button 
+            variant="contained"
+            color={isScannerActive ? "error" : "primary"}
+            fullWidth
+            onClick={toggleScanner}
+            sx={{ mt: 3, py: 1.5, fontSize: '1.1rem', fontWeight: 'bold' }}
+          >
+            {isScannerActive ? "Apagar Escáner" : "Escanear Boletos"}
+          </Button>
         </Box>
         
         {scanResult && (
@@ -149,6 +160,22 @@ export default function Scanner() {
                 {scanResult.asientos && <Typography><strong>Asientos:</strong> {scanResult.asientos.join(', ')}</Typography>}
               </Box>
             )}
+            <Button 
+              variant="contained" 
+              fullWidth 
+              onClick={handleAcceptResult}
+              sx={{ 
+                mt: 3, 
+                bgcolor: 'white', 
+                color: statusColor, 
+                fontWeight: 'bold', 
+                py: 1.5,
+                fontSize: '1.1rem',
+                '&:hover': { bgcolor: '#f0f0f0' } 
+              }}
+            >
+              ACEPTAR
+            </Button>
           </Paper>
         )}
       </Box>

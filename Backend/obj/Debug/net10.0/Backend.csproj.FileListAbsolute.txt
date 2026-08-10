@@ -25,11 +25,9 @@ C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.
 C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\rjsmrazor.dswa.cache.json
 C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\rjsmcshtml.dswa.cache.json
 C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\scopedcss\bundle\Backend.styles.css
-C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\compressed\lm1ywt5l90-{0}-2j8182iqum-2j8182iqum.gz
 C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\compressed\8hw3wp0yux-{0}-6eqoqnluzf-6eqoqnluzf.gz
 C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\compressed\l8oelam63x-{0}-180dmtdpho-180dmtdpho.gz
 C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\compressed\ltyzw7hns5-{0}-g3h7a9wx5y-g3h7a9wx5y.gz
-C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\compressed\3m06qortcc-{0}-v372mlywdj-v372mlywdj.gz
 C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\staticwebassets.build.json
 C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\staticwebassets.build.json.cache
 C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\staticwebassets.development.json
@@ -41,3 +39,6 @@ C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.
 C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\Backend.pdb
 C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\Backend.genruntimeconfig.cache
 C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\ref\Backend.dll
+C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\Backend.sourcelink.json
+C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\compressed\891rqcpls8-{0}-vuuvhkk2va-vuuvhkk2va.gz
+C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\compressed\3m06qortcc-{0}-6v8rskn1nr-6v8rskn1nr.gz

@@ -28,7 +28,7 @@ export default function Login() {
     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', bgcolor: 'background.default', p: 2 }}>
       <Paper sx={{ p: 4, width: '100%', maxWidth: 400 }}>
         <Typography variant="h5" align="center" gutterBottom fontWeight="bold">
-          Acceso LDAP
+          Acceso al Sistema
         </Typography>
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         <form onSubmit={handleLogin}>

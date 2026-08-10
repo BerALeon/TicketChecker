@@ -13,8 +13,8 @@ export default function History() {
       try {
         const data = await getHistory();
         setHistory(data);
-      } catch (err) {
-        console.error("Error fetching history", err);
+      } catch (_err) {
+        // error al cargar historial
       }
     };
     fetchHistory();

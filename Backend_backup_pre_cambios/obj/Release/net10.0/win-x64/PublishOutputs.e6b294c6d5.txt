@@ -1,4 +1,0 @@
-C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\publish\appsettings.Development.json
-C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\publish\appsettings.json
-C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\publish\Backend.pdb
-C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\publish\Backend.exe

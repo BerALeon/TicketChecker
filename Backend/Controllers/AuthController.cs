@@ -9,9 +9,15 @@ namespace Backend.Controllers;
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
-    // These would typically come from appsettings.json or environment variables
-    private readonly string _ldapServer = "ldap.empresa.com";
-    private readonly string _domain = "EMPRESA";
+    // Las credenciales de acceso provienen de appsettings.json (sección Auth)
+    private readonly string _demoUser;
+    private readonly string _demoPass;
+
+    public AuthController(IConfiguration configuration)
+    {
+        _demoUser = configuration["Auth:Username"] ?? "demo";
+        _demoPass = configuration["Auth:Password"] ?? "demo";
+    }
 
     [HttpPost("login")]
     public IActionResult Login([FromBody] LoginRequest request)
@@ -34,13 +40,13 @@ public class AuthController : ControllerBase
             }
             */
 
-            // Dummy success for development/testing
-            if (request.Username == "admin" && request.Password == "admin")
+            // Validación contra credenciales configuradas en appsettings.json
+            if (request.Username == _demoUser && request.Password == _demoPass)
             {
                 return Ok(new LoginResponse 
                 { 
                     Success = true, 
-                    Token = "dummy-jwt-token-for-dev", 
+                    Token = "ticket-checker-session-token", 
                     Message = "Autenticación exitosa." 
                 });
             }

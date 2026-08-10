@@ -35,8 +35,8 @@ export default function Scanner() {
           await scannerRef.current.stop();
         }
         setIsScannerActive(false);
-      } catch (e) {
-        console.error("Failed to stop scanner", e);
+      } catch (_e) {
+        // scanner already stopped
       }
     } else {
       try {
@@ -46,8 +46,8 @@ export default function Scanner() {
           onScanSuccess
         );
         setIsScannerActive(true);
-      } catch (err) {
-        console.error("Failed to start scanner", err);
+      } catch (_err) {
+        // could not start camera
       }
     }
   };
@@ -58,8 +58,8 @@ export default function Scanner() {
         await scannerRef.current.stop();
         setIsScannerActive(false);
       }
-    } catch (e) {
-      console.warn("Could not stop scanner", e);
+    } catch (_e) {
+      // scanner already stopped
     }
 
     try {

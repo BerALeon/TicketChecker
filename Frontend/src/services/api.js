@@ -12,7 +12,6 @@ export const login = async (username, password) => {
 export const validateTicket = async (ticketData) => {
   // Offline Stub: Check if offline
   if (!navigator.onLine) {
-    console.log('App is offline, saving to local queue (stub)');
     const queue = JSON.parse(localStorage.getItem('offline_queue') || '[]');
     queue.push({ ...ticketData, timestamp: new Date().toISOString() });
     localStorage.setItem('offline_queue', JSON.stringify(queue));

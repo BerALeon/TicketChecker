@@ -13,7 +13,7 @@ export default function History() {
       try {
         const data = await getHistory();
         setHistory(data);
-      } catch (_err) {
+      } catch {
         // error al cargar historial
       }
     };

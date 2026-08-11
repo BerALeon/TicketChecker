@@ -35,7 +35,7 @@ export default function Scanner() {
           await scannerRef.current.stop();
         }
         setIsScannerActive(false);
-      } catch (_e) {
+      } catch {
         // scanner already stopped
       }
     } else {
@@ -46,7 +46,7 @@ export default function Scanner() {
           onScanSuccess
         );
         setIsScannerActive(true);
-      } catch (_err) {
+      } catch {
         // could not start camera
       }
     }
@@ -58,7 +58,7 @@ export default function Scanner() {
         await scannerRef.current.stop();
         setIsScannerActive(false);
       }
-    } catch (_e) {
+    } catch {
       // scanner already stopped
     }
 
@@ -90,7 +90,7 @@ export default function Scanner() {
         setStatusColor('#2196F3'); // Solid Blue for offline
       }
 
-    } catch (e) {
+    } catch {
       setScanResult({ status: 'ERROR', message: 'QR Inválido o formato incorrecto.' });
       setStatusColor('#F44336');
     }

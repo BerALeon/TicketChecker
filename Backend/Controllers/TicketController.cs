@@ -55,15 +55,11 @@ public class TicketController : ControllerBase
             });
         }
 
-        // PRUEBA: Enviar el folio crudo (tal como viene en el QR) con todos los ceros
-        // para validar si el portal lo reconoce exactamente así.
-        string voucherReference = barcode.Trim();
-
         // 2. Consultar el Sales Portal real
         XDocument portalXml;
         try
         {
-            portalXml = await QuerySalesPortalAsync(voucherReference);
+            portalXml = await QueryOrderDetailsAsync(extractionResult.AuditNumber);
         }
         catch (HttpRequestException ex)
         {
@@ -81,33 +77,43 @@ public class TicketController : ControllerBase
             return StatusCode(502, new { Message = "Respuesta XML del portal con formato inesperado." });
 
         string resultCode = admitoneNode.Attribute("result")?.Value ?? "-1";
-        string pelicula = admitoneNode.Element("voucherTypeName")?.Value ?? string.Empty;
-
         TicketResponse finalResponse;
 
         if (resultCode == "0") // 0 = Éxito
         {
-            var redeemedNode = admitoneNode.Element("redeemed");
-            var expiredNode  = admitoneNode.Element("expired");
+            var ordersNode = admitoneNode.Element("orders");
+            var orderNode = ordersNode?.Element("order");
 
-            if (redeemedNode != null)
+            if (orderNode == null)
             {
-                // El portal indica que ya fue canjeado → DUPLICADO
+                // Si la respuesta fue exitosa pero no trajo una orden, significa que no encontró el folio.
+                finalResponse = new TicketResponse
+                {
+                    Status  = "INVALID",
+                    Message = $"Orden con folio '{barcode}' no encontrada en el sistema.",
+                    Folio   = barcode
+                };
+                return Ok(finalResponse);
+            }
+
+            string collected = orderNode.Element("collected")?.Value;
+            
+            // Intentar extraer el nombre de la película desde orderItems -> orderItem
+            string pelicula = string.Empty;
+            var firstOrderItem = orderNode.Element("orderItems")?.Elements("orderItem").FirstOrDefault();
+            if (firstOrderItem != null)
+            {
+                pelicula = firstOrderItem.Element("eventName")?.Value ?? string.Empty;
+            }
+
+            // Regla de Negocio: Si <collected> es diferente de "1", lo tomamos como DUPLICADO.
+            // Actualmente es de Solo Lectura.
+            if (collected != "1")
+            {
                 finalResponse = new TicketResponse
                 {
                     Status   = "DUPLICATE",
                     Message  = "Esta orden ya fue registrada anteriormente.",
-                    Folio    = barcode,
-                    Pelicula = pelicula
-                };
-            }
-            else if (expiredNode != null && DateTime.TryParse(expiredNode.Value, out var expDate) && expDate < now)
-            {
-                // Boleto expirado
-                finalResponse = new TicketResponse
-                {
-                    Status   = "INVALID",
-                    Message  = "El boleto ha expirado.",
                     Folio    = barcode,
                     Pelicula = pelicula
                 };
@@ -129,21 +135,12 @@ public class TicketController : ControllerBase
                 _scannedTickets.TryAdd(Guid.NewGuid().ToString(), finalResponse);
             }
         }
-        else if (resultCode == "156") // Voucher Reference Invalid
+        else if (resultCode == "3") // Terminal no autorizada
         {
             finalResponse = new TicketResponse
             {
                 Status  = "INVALID",
-                Message = $"Orden con folio '{voucherReference}' no encontrada en el sistema.",
-                Folio   = barcode
-            };
-        }
-        else if (resultCode == "3") // Terminal no autorizada o solicitud rechazada por el portal
-        {
-            finalResponse = new TicketResponse
-            {
-                Status  = "INVALID",
-                Message = "El portal rechazó la solicitud. Verifica que la terminal esté autorizada para consultar vouchers (cód. 3).",
+                Message = "El portal rechazó la solicitud. Verifica que la terminal esté autorizada para consultar órdenes (cód. 3).",
                 Folio   = barcode
             };
         }
@@ -180,13 +177,10 @@ public class TicketController : ControllerBase
     // =========================================================================
 
     /// <summary>
-    /// Envía una solicitud XML al Sales Portal (admitone requestId="503") y devuelve la respuesta parseada.
+    /// Envía una solicitud XML al Sales Portal y devuelve la respuesta parseada.
     /// </summary>
-    private async Task<XDocument> QuerySalesPortalAsync(string voucherReference)
+    private async Task<XDocument> SendAdmitOneRequestAsync(string xmlBody)
     {
-        // XML en una sola línea sin espacios ni saltos de línea (requerido por admitOne)
-        string xmlBody = $"<?xml version=\"1.0\" encoding=\"UTF-8\"?><admitOne requestId=\"503\" terminal=\"{_terminalId}\"><action>get</action><voucherReference>{voucherReference}</voucherReference></admitOne>";
-
         var client = _httpClientFactory.CreateClient();
         var content = new FormUrlEncodedContent(new Dictionary<string, string>
         {
@@ -198,6 +192,46 @@ public class TicketController : ControllerBase
 
         string xmlResponse = await httpResponse.Content.ReadAsStringAsync();
         return XDocument.Parse(xmlResponse);
+    }
+
+    /// <summary>
+    /// Ejecuta el flujo de 3 pasos (query -> getBlock -> closeQuery) para obtener los detalles de la orden.
+    /// </summary>
+    private async Task<XDocument> QueryOrderDetailsAsync(string orderId)
+    {
+        // Paso 1: Consultar para obtener el handle
+        string step1Xml = $"<?xml version=\"1.0\" encoding=\"UTF-8\"?><admitOne requestId=\"543\" terminal=\"{_terminalId}\"><action>query</action><searchReason>2</searchReason><newestFirst>1</newestFirst><audit>{orderId}</audit></admitOne>";
+        XDocument step1Response = await SendAdmitOneRequestAsync(step1Xml);
+
+        var admitOne1 = step1Response.Element("admitOne");
+        if (admitOne1 == null || admitOne1.Attribute("result")?.Value != "0")
+            return step1Response; // Retorna el error para que el controlador lo procese
+
+        string handle = admitOne1.Element("handle")?.Value;
+        if (string.IsNullOrEmpty(handle))
+            return step1Response; 
+
+        XDocument step2Response = null;
+        try
+        {
+            // Paso 2: Extraer el bloque usando el handle
+            string step2Xml = $"<?xml version=\"1.0\" encoding=\"UTF-8\"?><admitOne requestId=\"543\" terminal=\"{_terminalId}\"><handle>{handle}</handle><action>getBlock</action><newestFirst>1</newestFirst></admitOne>";
+            step2Response = await SendAdmitOneRequestAsync(step2Xml);
+            return step2Response;
+        }
+        finally
+        {
+            // Paso 3: Cerrar sesión/handle (Se ejecuta siempre para no dejar handles abiertos en el portal)
+            try
+            {
+                string step3Xml = $"<?xml version=\"1.0\" encoding=\"UTF-8\"?><admitOne requestId=\"530\" terminal=\"{_terminalId}\"><handle>{handle}</handle></admitOne>";
+                await SendAdmitOneRequestAsync(step3Xml);
+            }
+            catch
+            {
+                // Ignorar errores al cerrar el handle de forma deliberada
+            }
+        }
     }
 
     /// <summary>

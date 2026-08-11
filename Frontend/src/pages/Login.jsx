@@ -19,7 +19,7 @@ export default function Login() {
       } else {
         setError(res.message);
       }
-    } catch (err) {
+    } catch {
       setError('Error de conexión al servidor.');
     }
   };

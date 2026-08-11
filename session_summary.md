@@ -49,3 +49,27 @@ El desarrollo está 100% funcional y a la espera de un único dato de configurac
 ### Revisión General y Preparación
 - **Levantamiento de Servicios:** Se levantaron los servicios de Frontend y Backend para verificar el estado en el que se dejó el desarrollo y constatar que todo compila y corre correctamente.
 - **Guardado de Progreso:** Se preparó el entorno para continuar la próxima sesión, respaldando en Git las modificaciones locales recientes del Frontend (`History.jsx`, `Login.jsx`, `Scanner.jsx` y `api.js`) y del documento de sesión.
+
+### Integración del Flujo Definitivo de AdmitOne
+- **Nuevo Flujo (3 Pasos):** A1 proporcionó la ruta y los comandos exactos para validar un boleto normal a través del `OrderId`. Se modificó `TicketController.cs` para reemplazar la consulta simple por una cadena de peticiones:
+  1. `requestId="543"` (query): Para obtener un `handle` de la sesión mediante el `audit` (OrderId).
+  2. `requestId="543"` (getBlock): Para consultar la orden detallada utilizando el `handle` obtenido.
+  3. `requestId="530"` (close): Para cerrar la sesión y liberar recursos en el POS (ejecutado de forma segura en un bloque `finally`).
+
+### Regla de Negocio y Preguntas Abiertas (¡IMPORTANTE PARA MAÑANA!)
+- **Acuerdo Temporal:** Actualmente el sistema extrae el nodo `<collected>`. Por instrucción temporal, **si `<collected>` es igual a `"1"`, se considera VÁLIDO. Si es diferente de `"1"`, se considera DUPLICADO**.
+- **Solo Lectura:** El flujo actualmente solo consulta datos (Read-Only). No altera el estado del boleto en el servidor.
+- **Preguntas para Pruebas (Mañana):**
+  1. ¿Existen otros estatus en la respuesta que nos indiquen que el boleto fue usado (ej. `<printed date="..." />` o algún campo `<status>`)? Mañana validaremos con pruebas si `<collected>1</collected>` es la única métrica.
+  2. ¿Habrá un paso adicional o un request extra necesario para "marcar" el boleto como escaneado en el sistema de Cinemex? Si no lo hay, ¿debemos gestionar ese bloqueo (Duplicate) en una base de datos local para evitar re-escaneos?
+
+---
+
+## 11 de Agosto de 2026
+
+### Ajustes de UI y Limpieza de Proyecto
+- **Ajustes de UI:** Se actualizó el favicon (`Logo.ico`) y el título de la pestaña de la aplicación Frontend para mostrar "TicketChecker" de forma correcta.
+- **Limpieza de Archivos:** Se eliminó la carpeta `.pdftemp` y su script asociado, el cual era utilizado temporalmente para buscar información en el PDF de especificaciones.
+- **Limpieza de Código (Frontend):** Se corrigieron las advertencias del linter `oxlint` en `Login.jsx`, `History.jsx` y `Scanner.jsx` removiendo parámetros no utilizados en los bloques `catch`. El análisis estático de código ahora reporta 0 errores y 0 advertencias.
+- **Seguridad y Configuración (Backend):** Se removieron las credenciales hardcodeadas (usuario y contraseña) del archivo `appsettings.json` para cumplir con las directrices de seguridad de paso a producción. Se dejó documentado que para arrancar el backend en modo local se deben utilizar variables de entorno o la herramienta `dotnet user-secrets`.
+- **Evaluación de Paquetes:** Se identificó una advertencia de seguridad (vulnerabilidad alta) en la versión de `Microsoft.OpenApi` en .NET. Al intentar una actualización a la versión v3, se generaron errores de compatibilidad severos (*breaking changes*) con los generadores actuales de código, por lo cual se decidió mantener el manejo por defecto y permitir que el proyecto compile de forma estable.

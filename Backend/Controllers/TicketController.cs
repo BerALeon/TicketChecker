@@ -47,7 +47,7 @@ public class TicketController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Folio))
             return BadRequest(new { Message = "Folio invÃ¡lido." });
 
-        var barcode = request.Folio.Trim();
+        var barcode = request.Folio.Trim().ToUpperInvariant();
         var now = DateTime.Now;
 
         // 1. Extraer el Audit Number del cÃ³digo de barras (soporta v1 y v2)

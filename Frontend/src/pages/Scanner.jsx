@@ -60,6 +60,11 @@ export default function Scanner() {
         setIsScannerActive(true);
       } catch (err) {
         console.error('Camera start error:', err);
+        if (!window.isSecureContext) {
+          alert('⚠️ ERROR DE SEGURIDAD:\n\nLa cámara requiere una conexión segura (HTTPS) para funcionar.\n\nPor favor, accede a la aplicación utilizando HTTPS en lugar de HTTP, o configura los permisos del navegador.');
+        } else {
+          alert(`Error al iniciar la cámara: ${err.message || err}\n\nAsegúrate de haber dado los permisos de cámara al navegador.`);
+        }
       }
     }
   };

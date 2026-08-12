@@ -1,0 +1,12 @@
+C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\Backend.csproj.AssemblyReference.cache
+C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\rpswa.dswa.cache.json
+C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\Backend.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\Backend.AssemblyInfoInputs.cache
+C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\Backend.AssemblyInfo.cs
+C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\Backend.csproj.CoreCompileInputs.cache
+C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\Backend.MvcApplicationPartsAssemblyInfo.cs
+C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\Backend.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\Backend.sourcelink.json
+C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\Backend.dll
+C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\refint\Backend.dll
+C:\Users\Rentas 15195\Documents\Proyectos\TicketChecker\Backend\obj\Debug\net10.0\Backend.pdb

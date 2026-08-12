@@ -9,6 +9,22 @@ export const login = async (username, password) => {
   return res.json();
 };
 
+export const getConfigStatus = async () => {
+  const res = await fetch(`${API_URL}/config/status`, {
+    cache: 'no-store'
+  });
+  return res.json();
+};
+
+export const setupConfig = async (url, terminalId) => {
+  const res = await fetch(`${API_URL}/config/setup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url, terminalId })
+  });
+  return res.json();
+};
+
 export const validateTicket = async (ticketData) => {
   // Offline Stub: Check if offline
   if (!navigator.onLine) {

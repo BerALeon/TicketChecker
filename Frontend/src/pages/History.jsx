@@ -35,19 +35,23 @@ export default function History() {
             <TableRow>
               <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Folio</TableCell>
               <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Película</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Hora</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Hora Función</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Asientos</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Escaneado</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {history.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={3} align="center">No hay escaneos válidos hoy.</TableCell>
+                <TableCell colSpan={5} align="center">No hay escaneos válidos hoy.</TableCell>
               </TableRow>
             ) : (
               history.map((row) => (
                 <TableRow key={row.folio}>
                   <TableCell>{row.folio}</TableCell>
                   <TableCell>{row.pelicula}</TableCell>
+                  <TableCell>{row.horario || 'N/A'}</TableCell>
+                  <TableCell>{row.asientos ? row.asientos.join(', ') : 'N/A'}</TableCell>
                   <TableCell>{new Date(row.scannedAt).toLocaleTimeString()}</TableCell>
                 </TableRow>
               ))

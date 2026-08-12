@@ -6,8 +6,11 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using Microsoft.AspNetCore.Hosting;
+using System.IO;
 
 namespace Backend.Controllers;
 
@@ -16,19 +19,21 @@ namespace Backend.Controllers;
 public class TicketController : ControllerBase
 {
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly string _salesPortalUrl;
-    private readonly string _terminalId;
+    private readonly IConfiguration _configuration;
+    private readonly IWebHostEnvironment _env;
 
     // Historial de escaneos para la API history/today
     private static readonly ConcurrentDictionary<string, TicketResponse> _scannedTickets = new();
+    private static bool _isHistoryLoaded = false;
+    private static readonly object _historyLock = new object();
 
-    public TicketController(IHttpClientFactory httpClientFactory, IConfiguration configuration)
+    public TicketController(IHttpClientFactory httpClientFactory, IConfiguration configuration, IWebHostEnvironment env)
     {
         _httpClientFactory = httpClientFactory;
-        _salesPortalUrl = configuration["SalesPortal:Url"]
-            ?? throw new InvalidOperationException("SalesPortal:Url no está configurado en appsettings.json");
-        _terminalId = configuration["SalesPortal:TerminalId"]
-            ?? throw new InvalidOperationException("SalesPortal:TerminalId no está configurado en appsettings.json");
+        _configuration = configuration;
+        _env = env;
+
+        LoadHistoryIfNeeded();
     }
 
     // -------------------------------------------------------------------------
@@ -52,6 +57,21 @@ public class TicketController : ControllerBase
                 Status = "INVALID",
                 Message = extractionResult.ErrorMessage,
                 Folio = barcode
+            });
+        }
+
+        // 1.5 Revisar si ya está en el historial local (fue escaneado en esta sesión)
+        if (_scannedTickets.TryGetValue(barcode, out var previousScan))
+        {
+            return Ok(new TicketResponse
+            {
+                Status = "DUPLICATE",
+                Message = "Esta orden ya fue registrada anteriormente (Historial Local).",
+                Folio = barcode,
+                Pelicula = previousScan.Pelicula,
+                Horario = previousScan.Horario,
+                Asientos = previousScan.Asientos,
+                ScannedAt = previousScan.ScannedAt
             });
         }
 
@@ -98,24 +118,53 @@ public class TicketController : ControllerBase
 
             string collected = orderNode.Element("collected")?.Value;
             
-            // Intentar extraer el nombre de la película desde orderItems -> orderItem
+            // Intentar extraer el nombre de la película, horario y asientos desde orderItems -> orderItem
             string pelicula = string.Empty;
+            string horario = string.Empty;
+            List<string> asientosList = new();
+
             var firstOrderItem = orderNode.Element("orderItems")?.Elements("orderItem").FirstOrDefault();
             if (firstOrderItem != null)
             {
                 pelicula = firstOrderItem.Element("eventName")?.Value ?? string.Empty;
+
+                var timeNode = firstOrderItem.Element("time");
+                if (timeNode != null && timeNode.Value.Length >= 14)
+                {
+                    var t = timeNode.Value; // e.g. 20260811201000
+                    horario = $"{t.Substring(6, 2)}/{t.Substring(4, 2)}/{t.Substring(0, 4)} {t.Substring(8, 2)}:{t.Substring(10, 2)}";
+                }
+
+                var seatsNode = firstOrderItem.Element("seats")?.Element("allocated");
+                if (seatsNode != null && !string.IsNullOrEmpty(seatsNode.Value))
+                {
+                    var seatParts = seatsNode.Value.Split('/');
+                    foreach (var part in seatParts)
+                    {
+                        var chunks = part.Split(':');
+                        if (chunks.Length >= 3)
+                        {
+                            asientosList.Add($"{chunks[2]}-{chunks[1]}");
+                        }
+                    }
+                }
             }
 
-            // Regla de Negocio: Si <collected> es diferente de "1", lo tomamos como DUPLICADO.
+            if (asientosList.Count == 0)
+                asientosList.Add("N/A");
+
+            // Regla de Negocio: Si <collected> es igual a "1", lo tomamos como DUPLICADO (ya fue usado).
             // Actualmente es de Solo Lectura.
-            if (collected != "1")
+            if (collected == "1")
             {
                 finalResponse = new TicketResponse
                 {
                     Status   = "DUPLICATE",
                     Message  = "Esta orden ya fue registrada anteriormente.",
                     Folio    = barcode,
-                    Pelicula = pelicula
+                    Pelicula = pelicula,
+                    Horario  = horario,
+                    Asientos = asientosList
                 };
             }
             else
@@ -127,12 +176,16 @@ public class TicketController : ControllerBase
                     Message    = "La orden es válida y ha sido registrada.",
                     Folio      = barcode,
                     Pelicula   = pelicula,
-                    Asientos   = new List<string> { "N/A" },
+                    Horario    = horario,
+                    Asientos   = asientosList,
                     ScannedAt  = now
                 };
 
                 // Guardar en el historial de escaneos exitosos del día
-                _scannedTickets.TryAdd(Guid.NewGuid().ToString(), finalResponse);
+                _scannedTickets.TryAdd(barcode, finalResponse);
+                
+                // Guardar asíncronamente en el archivo JSON
+                _ = SaveHistoryAsync();
             }
         }
         else if (resultCode == "3") // Terminal no autorizada
@@ -187,10 +240,29 @@ public class TicketController : ControllerBase
             { "XML", xmlBody }  // El parámetro DEBE llamarse "XML" según documentación
         });
 
-        var httpResponse = await client.PostAsync(_salesPortalUrl, content);
+        if (_configuration is IConfigurationRoot configRoot)
+        {
+            configRoot.Reload();
+        }
+
+        var salesPortalUrl = _configuration["SalesPortal:Url"] ?? string.Empty;
+        var httpResponse = await client.PostAsync(salesPortalUrl, content);
         httpResponse.EnsureSuccessStatusCode();
 
         string xmlResponse = await httpResponse.Content.ReadAsStringAsync();
+
+        // ------------------ DEBUG LOG XML ------------------
+        try
+        {
+            var debugDir = Path.Combine(_env.ContentRootPath, "Logs", "Debug");
+            if (!Directory.Exists(debugDir)) Directory.CreateDirectory(debugDir);
+            var debugFile = Path.Combine(debugDir, $"xml_log_{DateTime.Now:yyyyMMdd}.txt");
+            var logEntry = $"\n=== {DateTime.Now:HH:mm:ss} ===\nREQUEST:\n{xmlBody}\n\nRESPONSE:\n{xmlResponse}\n==================\n";
+            await System.IO.File.AppendAllTextAsync(debugFile, logEntry);
+        }
+        catch { /* Ignorar errores de debug */ }
+        // ---------------------------------------------------
+
         return XDocument.Parse(xmlResponse);
     }
 
@@ -199,8 +271,15 @@ public class TicketController : ControllerBase
     /// </summary>
     private async Task<XDocument> QueryOrderDetailsAsync(string orderId)
     {
+        if (_configuration is IConfigurationRoot configRoot)
+        {
+            configRoot.Reload();
+        }
+
+        var terminalId = _configuration["SalesPortal:TerminalId"] ?? string.Empty;
+
         // Paso 1: Consultar para obtener el handle
-        string step1Xml = $"<?xml version=\"1.0\" encoding=\"UTF-8\"?><admitOne requestId=\"543\" terminal=\"{_terminalId}\"><action>query</action><searchReason>2</searchReason><newestFirst>1</newestFirst><audit>{orderId}</audit></admitOne>";
+        string step1Xml = $"<?xml version=\"1.0\" encoding=\"UTF-8\"?><admitOne requestId=\"543\" terminal=\"{terminalId}\"><action>query</action><searchReason>2</searchReason><newestFirst>1</newestFirst><audit>{orderId}</audit></admitOne>";
         XDocument step1Response = await SendAdmitOneRequestAsync(step1Xml);
 
         var admitOne1 = step1Response.Element("admitOne");
@@ -215,7 +294,7 @@ public class TicketController : ControllerBase
         try
         {
             // Paso 2: Extraer el bloque usando el handle
-            string step2Xml = $"<?xml version=\"1.0\" encoding=\"UTF-8\"?><admitOne requestId=\"543\" terminal=\"{_terminalId}\"><handle>{handle}</handle><action>getBlock</action><newestFirst>1</newestFirst></admitOne>";
+            string step2Xml = $"<?xml version=\"1.0\" encoding=\"UTF-8\"?><admitOne requestId=\"543\" terminal=\"{terminalId}\"><handle>{handle}</handle><action>getBlock</action><newestFirst>1</newestFirst></admitOne>";
             step2Response = await SendAdmitOneRequestAsync(step2Xml);
             return step2Response;
         }
@@ -224,7 +303,7 @@ public class TicketController : ControllerBase
             // Paso 3: Cerrar sesión/handle (Se ejecuta siempre para no dejar handles abiertos en el portal)
             try
             {
-                string step3Xml = $"<?xml version=\"1.0\" encoding=\"UTF-8\"?><admitOne requestId=\"530\" terminal=\"{_terminalId}\"><handle>{handle}</handle></admitOne>";
+                string step3Xml = $"<?xml version=\"1.0\" encoding=\"UTF-8\"?><admitOne requestId=\"530\" terminal=\"{terminalId}\"><handle>{handle}</handle></admitOne>";
                 await SendAdmitOneRequestAsync(step3Xml);
             }
             catch
@@ -271,6 +350,99 @@ public class TicketController : ControllerBase
         }
 
         return new ExtractionResult { Success = false, ErrorMessage = "Longitud de código inválida. Se esperaban 12 o 14 caracteres." };
+    }
+
+    private void LoadHistoryIfNeeded()
+    {
+        if (_isHistoryLoaded) return;
+
+        lock (_historyLock)
+        {
+            if (_isHistoryLoaded) return;
+
+            try
+            {
+                var directory = Path.Combine(_env.ContentRootPath, "Logs", "Historico");
+                if (!Directory.Exists(directory)) return;
+
+                // 1. Limpiar archivos viejos (mayores a 7 días)
+                CleanupOldHistoryFiles(directory);
+
+                // 2. Cargar el historial de hoy
+                var fileName = $"historial_{DateTime.Today:yyyy-MM-dd}.json";
+                var filePath = Path.Combine(directory, fileName);
+
+                if (System.IO.File.Exists(filePath))
+                {
+                    var json = System.IO.File.ReadAllText(filePath);
+                    var loadedDict = JsonSerializer.Deserialize<Dictionary<string, TicketResponse>>(json);
+                    
+                    if (loadedDict != null)
+                    {
+                        foreach (var kvp in loadedDict)
+                        {
+                            _scannedTickets.TryAdd(kvp.Key, kvp.Value);
+                        }
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // Ignorar errores al cargar el historial para no afectar el arranque
+            }
+            finally
+            {
+                _isHistoryLoaded = true;
+            }
+        }
+    }
+
+    private async Task SaveHistoryAsync()
+    {
+        try
+        {
+            var directory = Path.Combine(_env.ContentRootPath, "Logs", "Historico");
+            if (!Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            var fileName = $"historial_{DateTime.Today:yyyy-MM-dd}.json";
+            var filePath = Path.Combine(directory, fileName);
+
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            // Copiar el diccionario para evitar bloqueos
+            var snapshot = _scannedTickets.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            var json = JsonSerializer.Serialize(snapshot, options);
+
+            await System.IO.File.WriteAllTextAsync(filePath, json);
+        }
+        catch (Exception)
+        {
+            // Fallo silencioso si no se puede escribir el log
+        }
+    }
+
+    private void CleanupOldHistoryFiles(string directory)
+    {
+        try
+        {
+            var files = Directory.GetFiles(directory, "historial_*.json");
+            var thresholdDate = DateTime.Now.AddDays(-7);
+
+            foreach (var file in files)
+            {
+                var fileInfo = new FileInfo(file);
+                if (fileInfo.CreationTime < thresholdDate && fileInfo.LastWriteTime < thresholdDate)
+                {
+                    fileInfo.Delete();
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // Ignorar errores al limpiar archivos viejos
+        }
     }
 }
 

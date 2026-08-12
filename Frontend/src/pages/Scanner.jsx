@@ -157,7 +157,8 @@ export default function Scanner() {
               <Box sx={{ mt: 2, textAlign: 'left', bgcolor: 'rgba(255,255,255,0.2)', p: 2, borderRadius: 1 }}>
                 <Typography><strong>Folio:</strong> {scanResult.folio}</Typography>
                 {scanResult.pelicula && <Typography><strong>Película:</strong> {scanResult.pelicula}</Typography>}
-                {scanResult.asientos && <Typography><strong>Asientos:</strong> {scanResult.asientos.join(', ')}</Typography>}
+                {scanResult.horario && <Typography><strong>Horario:</strong> {scanResult.horario}</Typography>}
+                {scanResult.asientos && scanResult.asientos.length > 0 && <Typography><strong>Asientos:</strong> {scanResult.asientos.join(', ')}</Typography>}
               </Box>
             )}
             <Button 

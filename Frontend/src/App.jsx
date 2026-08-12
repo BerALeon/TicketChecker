@@ -1,21 +1,44 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Login from './pages/Login';
+import { useState, useEffect } from 'react';
+import Setup from './pages/Setup';
 import Scanner from './pages/Scanner';
 import History from './pages/History';
+import { getConfigStatus } from './services/api';
+import { Box, CircularProgress } from '@mui/material';
 
 function App() {
-  const isAuthenticated = () => {
-    return !!localStorage.getItem('token');
-  };
+  const [isConfigured, setIsConfigured] = useState(null);
+
+  useEffect(() => {
+    const checkConfig = async () => {
+      try {
+        const res = await getConfigStatus();
+        console.log('getConfigStatus result:', res);
+        setIsConfigured(res.isConfigured);
+      } catch (err) {
+        console.error('getConfigStatus error:', err);
+        setIsConfigured(false);
+      }
+    };
+    checkConfig();
+  }, []);
+
+  if (isConfigured === null) {
+    return (
+      <Box sx={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   const ProtectedRoute = ({ children }) => {
-    return isAuthenticated() ? children : <Navigate to="/login" />;
+    return isConfigured ? children : <Navigate to="/setup" />;
   };
 
   return (
     <Router>
       <Routes>
-        <Route path="/login" element={<Login />} />
+        <Route path="/setup" element={isConfigured ? <Navigate to="/scanner" /> : <Setup onSetupComplete={() => setIsConfigured(true)} />} />
         <Route 
           path="/scanner" 
           element={
@@ -32,7 +55,7 @@ function App() {
             </ProtectedRoute>
           } 
         />
-        <Route path="*" element={<Navigate to={isAuthenticated() ? "/scanner" : "/login"} />} />
+        <Route path="*" element={<Navigate to={isConfigured ? "/scanner" : "/setup"} />} />
       </Routes>
     </Router>
   );

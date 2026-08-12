@@ -69,7 +69,7 @@ public class ConfigController : ControllerBase
                 configRoot.Reload();
             }
 
-            return Ok(new { Message = "Configuración guardada exitosamente." });
+            return Ok(new { Message = "ConfiguraciÃ³n guardada exitosamente." });
         }
 
         return StatusCode(500, new { Message = "No se pudo leer appsettings.json" });

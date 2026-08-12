@@ -91,7 +91,7 @@ export default function Scanner() {
 
     } catch (err) {
       console.error('Validation error:', err);
-      setScanResult({ status: 'ERROR', message: 'QR Inválido o formato incorrecto.' });
+      setScanResult({ status: 'ERROR', message: 'QR InvÃ¡lido o formato incorrecto.' });
       setStatusColor('#F44336');
     }
   };
@@ -113,7 +113,7 @@ export default function Scanner() {
       <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: 'primary.main', color: 'white' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <img src="/images/Logo.png" alt="Logo" style={{ height: '32px', borderRadius: '4px' }} />
-          <Typography variant="h6" fontWeight="bold">Validación de Boletos</Typography>
+          <Typography variant="h6" fontWeight="bold">ValidaciÃ³n de Boletos</Typography>
         </Box>
         <IconButton color="inherit" onClick={() => navigate('/history')}>
           <HistoryIcon />
@@ -139,23 +139,23 @@ export default function Scanner() {
             onClick={toggleScanner}
             sx={{ mt: 3, py: 1.5, fontSize: '1.1rem', fontWeight: 'bold' }}
           >
-            {isScannerActive ? "Apagar Escáner" : "Escanear Boletos"}
+            {isScannerActive ? "Apagar EscÃ¡ner" : "Escanear Boletos"}
           </Button>
         </Box>
         
         {scanResult && (
           <Paper sx={{ p: 4, width: '100%', maxWidth: 400, textAlign: 'center', bgcolor: statusColor, color: 'white' }}>
             <Typography variant="h4" fontWeight="bold" gutterBottom>
-              {scanResult.status === 'VALID' && '✅ VÁLIDO'}
-              {scanResult.status === 'INVALID' && '❌ INVÁLIDO'}
-              {scanResult.status === 'DUPLICATE' && '⚠️ DUPLICADO'}
-              {scanResult.status === 'ERROR' && '❌ ERROR'}
+              {scanResult.status === 'VALID' && 'âœ… VÃLIDO'}
+              {scanResult.status === 'INVALID' && 'âŒ INVÃLIDO'}
+              {scanResult.status === 'DUPLICATE' && 'âš ï¸ DUPLICADO'}
+              {scanResult.status === 'ERROR' && 'âŒ ERROR'}
             </Typography>
             <Typography variant="h6" gutterBottom>{scanResult.message}</Typography>
             {scanResult.folio && (
               <Box sx={{ mt: 2, textAlign: 'left', bgcolor: 'rgba(255,255,255,0.2)', p: 2, borderRadius: 1 }}>
                 <Typography><strong>Folio:</strong> {scanResult.folio}</Typography>
-                {scanResult.pelicula && <Typography><strong>Película:</strong> {scanResult.pelicula}</Typography>}
+                {scanResult.pelicula && <Typography><strong>PelÃ­cula:</strong> {scanResult.pelicula}</Typography>}
                 {scanResult.horario && <Typography><strong>Horario:</strong> {scanResult.horario}</Typography>}
                 {scanResult.asientos && scanResult.asientos.length > 0 && <Typography><strong>Asientos:</strong> {scanResult.asientos.join(', ')}</Typography>}
               </Box>

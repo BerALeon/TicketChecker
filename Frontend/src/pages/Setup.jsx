@@ -26,10 +26,10 @@ export default function Setup({ onSetupComplete }) {
       if (res.message && res.message.includes('exitosamente')) {
         onSetupComplete();
       } else {
-        setError(res.message || 'Error al guardar la configuración.');
+        setError(res.message || 'Error al guardar la configuraciÃ³n.');
       }
     } catch (err) {
-      setError('Error de conexión con el servidor.');
+      setError('Error de conexiÃ³n con el servidor.');
     } finally {
       setIsLoading(false);
     }
@@ -50,7 +50,7 @@ export default function Setup({ onSetupComplete }) {
           <img src="/images/Logo.png" alt="Logo" style={{ height: '60px' }} />
         </Box>
         <Typography variant="h5" align="center" fontWeight="bold" gutterBottom>
-          Configuración Inicial
+          ConfiguraciÃ³n Inicial
         </Typography>
         <Typography variant="body2" align="center" color="text.secondary" sx={{ mb: 3 }}>
           Por favor, ingresa los datos del complejo para comenzar a validar boletos.

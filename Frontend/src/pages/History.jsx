@@ -34,8 +34,8 @@ export default function History() {
           <TableHead sx={{ bgcolor: 'primary.main' }}>
             <TableRow>
               <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Folio</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Película</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Hora Función</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>PelÃ­cula</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Hora FunciÃ³n</TableCell>
               <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Asientos</TableCell>
               <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Escaneado</TableCell>
             </TableRow>
@@ -43,7 +43,7 @@ export default function History() {
           <TableBody>
             {history.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} align="center">No hay escaneos válidos hoy.</TableCell>
+                <TableCell colSpan={5} align="center">No hay escaneos vÃ¡lidos hoy.</TableCell>
               </TableRow>
             ) : (
               history.map((row) => (

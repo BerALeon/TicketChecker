@@ -8,4 +8,4 @@ Set-Location Backend
 dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true -o ../publish
 Set-Location ..
 
-Write-Host "Publicación completada en la carpeta /publish" -ForegroundColor Green
+Write-Host "PublicaciÃ³n completada en la carpeta /publish" -ForegroundColor Green

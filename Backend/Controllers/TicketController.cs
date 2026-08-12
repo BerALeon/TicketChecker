@@ -284,7 +284,14 @@ public class TicketController : ControllerBase
         }
 
         var salesPortalUrl = _configuration["SalesPortal:Url"] ?? string.Empty;
-        var httpResponse = await client.PostAsync(salesPortalUrl, content);
+
+        if (!Uri.TryCreate(salesPortalUrl, UriKind.Absolute, out var uriResult) || 
+            (uriResult.Scheme != Uri.UriSchemeHttp && uriResult.Scheme != Uri.UriSchemeHttps))
+        {
+            throw new InvalidOperationException("La URL configurada para el Sales Portal no es válida o segura.");
+        }
+
+        var httpResponse = await client.PostAsync(uriResult, content);
         httpResponse.EnsureSuccessStatusCode();
 
         string xmlResponse = await httpResponse.Content.ReadAsStringAsync();

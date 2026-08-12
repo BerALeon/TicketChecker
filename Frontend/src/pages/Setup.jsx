@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Box, Typography, TextField, Button, Paper, Alert } from '@mui/material';
 import { setupConfig } from '../services/api';
+import { useNavigate } from 'react-router-dom';
 
 export default function Setup({ onSetupComplete }) {
+  const navigate = useNavigate();
   const [ip, setIp] = useState('');
   const [port, setPort] = useState('8001');
   const [terminalId, setTerminalId] = useState('');
@@ -25,11 +27,12 @@ export default function Setup({ onSetupComplete }) {
       const res = await setupConfig(constructedUrl, terminalId);
       if (res.message && res.message.includes('exitosamente')) {
         onSetupComplete();
+        navigate('/scanner');
       } else {
-        setError(res.message || 'Error al guardar la configuraciÃ³n.');
+        setError(res.message || 'Error al guardar la configuración.');
       }
     } catch (err) {
-      setError('Error de conexiÃ³n con el servidor.');
+      setError('Error de conexión con el servidor.');
     } finally {
       setIsLoading(false);
     }
@@ -40,17 +43,15 @@ export default function Setup({ onSetupComplete }) {
       minHeight: '100vh',
       display: 'flex',
       flexDirection: 'column',
-      justifyContent: 'center',
+      justifyContent: 'flex-start',
       alignItems: 'center',
-      bgcolor: '#f5f5f5',
-      p: 2
+      bgcolor: 'transparent',
+      pt: 2,
+      px: 2
     }}>
-      <Paper sx={{ p: 4, width: '100%', maxWidth: 400, borderRadius: 2, boxShadow: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
-          <img src="/images/Logo.png" alt="Logo" style={{ height: '60px' }} />
-        </Box>
+      <Paper sx={{ p: 3, pt: 2, width: '100%', maxWidth: 400, borderRadius: 2, boxShadow: 3 }}>
         <Typography variant="h5" align="center" fontWeight="bold" gutterBottom>
-          ConfiguraciÃ³n Inicial
+          Configuración Inicial
         </Typography>
         <Typography variant="body2" align="center" color="text.secondary" sx={{ mb: 3 }}>
           Por favor, ingresa los datos del complejo para comenzar a validar boletos.

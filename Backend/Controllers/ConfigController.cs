@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using System.IO;
@@ -71,7 +71,7 @@ public class ConfigController : ControllerBase
                 configRoot.Reload();
             }
 
-            return Ok(new { Message = "ConfiguraciÃ³n guardada exitosamente." });
+            return Ok(new { Message = "Configuración guardada exitosamente." });
         }
 
         return StatusCode(500, new { Message = "No se pudo leer appsettings.json" });
@@ -83,3 +83,4 @@ public class SetupRequest
     public string Url { get; set; } = string.Empty;
     public string TerminalId { get; set; } = string.Empty;
 }
+

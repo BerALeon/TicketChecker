@@ -38,7 +38,7 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/setup" element={isConfigured ? <Navigate to="/scanner" /> : <Setup onSetupComplete={() => setIsConfigured(true)} />} />
+        <Route path="/setup" element={<Setup onSetupComplete={() => setIsConfigured(true)} />} />
         <Route 
           path="/scanner" 
           element={

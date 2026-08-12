@@ -21,21 +21,22 @@ export default function History() {
   }, []);
 
   return (
-    <Box sx={{ p: 2, bgcolor: 'background.default', minHeight: '100vh' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-        <IconButton onClick={() => navigate('/scanner')} sx={{ mr: 2 }}>
+    <Box sx={{ bgcolor: 'transparent', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ p: 2, display: 'flex', alignItems: 'center', bgcolor: 'primary.main', color: 'white' }}>
+        <IconButton color="inherit" onClick={() => navigate('/scanner')} sx={{ mr: 2 }}>
           <ArrowBackIcon />
         </IconButton>
-        <Typography variant="h5" fontWeight="bold">Historial de Hoy</Typography>
+        <Typography variant="h6" fontWeight="bold">Historial de Hoy</Typography>
       </Box>
 
-      <TableContainer component={Paper}>
+      <Box sx={{ p: 2, flex: 1 }}>
+        <TableContainer component={Paper}>
         <Table>
           <TableHead sx={{ bgcolor: 'primary.main' }}>
             <TableRow>
               <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Folio</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>PelÃ­cula</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Hora FunciÃ³n</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Película</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Hora Función</TableCell>
               <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Asientos</TableCell>
               <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Escaneado</TableCell>
             </TableRow>
@@ -43,7 +44,7 @@ export default function History() {
           <TableBody>
             {history.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} align="center">No hay escaneos vÃ¡lidos hoy.</TableCell>
+                <TableCell colSpan={5} align="center">No hay escaneos válidos hoy.</TableCell>
               </TableRow>
             ) : (
               history.map((row) => (
@@ -59,6 +60,7 @@ export default function History() {
           </TableBody>
         </Table>
       </TableContainer>
+      </Box>
     </Box>
   );
 }

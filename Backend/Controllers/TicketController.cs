@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Backend.Models;
 using System;
@@ -45,12 +45,12 @@ public class TicketController : ControllerBase
     public async Task<IActionResult> Validate([FromBody] TicketRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Folio))
-            return BadRequest(new { Message = "Folio invÃ¡lido." });
+            return BadRequest(new { Message = "Folio inválido." });
 
         var barcode = request.Folio.Trim().ToUpperInvariant();
         var now = DateTime.Now;
 
-        // 1. Extraer el Audit Number del cÃ³digo de barras (soporta v1 y v2)
+        // 1. Extraer el Audit Number del código de barras (soporta v1 y v2)
         var extractionResult = ExtractAuditNumber(barcode);
         if (!extractionResult.Success)
         {
@@ -62,7 +62,7 @@ public class TicketController : ControllerBase
             });
         }
 
-        // 1.5 Revisar si ya estÃ¡ en el historial local (fue escaneado en esta sesiÃ³n)
+        // 1.5 Revisar si ya está en el historial local (fue escaneado en esta sesión)
         if (_scannedTickets.TryGetValue(barcode, out var previousScan))
         {
             return Ok(new TicketResponse
@@ -85,7 +85,7 @@ public class TicketController : ControllerBase
         }
         catch (HttpRequestException ex)
         {
-            return StatusCode(503, new { Message = $"Error de conexiÃ³n con el Sales Portal: {ex.Message}" });
+            return StatusCode(503, new { Message = $"Error de conexión con el Sales Portal: {ex.Message}" });
         }
         catch (Exception ex)
         {
@@ -93,7 +93,7 @@ public class TicketController : ControllerBase
         }
 
         // 3. Interpretar la respuesta XML
-        // El portal devuelve el nodo raÃ­z como "admitOne" (case-sensitive)
+        // El portal devuelve el nodo raíz como "admitOne" (case-sensitive)
         var admitoneNode = portalXml.Element("admitOne");
         if (admitoneNode == null)
             return StatusCode(502, new { Message = "Respuesta del portal con formato inesperado." });
@@ -101,14 +101,14 @@ public class TicketController : ControllerBase
         string resultCode = admitoneNode.Attribute("result")?.Value ?? "-1";
         TicketResponse finalResponse;
 
-        if (resultCode == "0") // 0 = Ã‰xito
+        if (resultCode == "0") // 0 = Éxito
         {
             var ordersNode = admitoneNode.Element("orders");
             var orderNode = ordersNode?.Element("order");
 
             if (orderNode == null)
             {
-                // Si la respuesta fue exitosa pero no trajo una orden, significa que no encontrÃ³ el folio.
+                // Si la respuesta fue exitosa pero no trajo una orden, significa que no encontró el folio.
                 finalResponse = new TicketResponse
                 {
                     Status = "INVALID",
@@ -120,7 +120,7 @@ public class TicketController : ControllerBase
 
             string collected = orderNode.Element("collected")?.Value;
 
-            // Intentar extraer el nombre de la pelÃ­cula, horario y asientos desde orderItems -> orderItem
+            // Intentar extraer el nombre de la película, horario y asientos desde orderItems -> orderItem
             string pelicula = string.Empty;
             string horario = string.Empty;
             DateTime? funcionTime = null;
@@ -161,7 +161,7 @@ public class TicketController : ControllerBase
             if (asientosList.Count == 0)
                 asientosList.Add("N/A");
 
-            // ValidaciÃ³n de Fecha y Hora
+            // Validación de Fecha y Hora
             if (funcionTime.HasValue)
             {
                 var diff = funcionTime.Value - now;
@@ -172,7 +172,7 @@ public class TicketController : ControllerBase
                     return Ok(new TicketResponse
                     {
                         Status = "INVALID",
-                        Message = "Este boleto no es para el dÃ­a de hoy.",
+                        Message = "Este boleto no es para el día de hoy.",
                         Folio = barcode,
                         Pelicula = pelicula,
                         Horario = horario,
@@ -185,7 +185,7 @@ public class TicketController : ControllerBase
                     return Ok(new TicketResponse
                     {
                         Status = "INVALID",
-                        Message = $"AÃºn es muy temprano. La funciÃ³n es a las {funcionTime.Value:HH:mm}.",
+                        Message = $"Aún es muy temprano. La función es a las {funcionTime.Value:HH:mm}.",
                         Folio = barcode,
                         Pelicula = pelicula,
                         Horario = horario,
@@ -198,7 +198,7 @@ public class TicketController : ControllerBase
                     return Ok(new TicketResponse
                     {
                         Status = "INVALID",
-                        Message = "La funciÃ³n ya ha finalizado o el lÃ­mite de tiempo expirÃ³.",
+                        Message = "La función ya ha finalizado o el límite de tiempo expiró.",
                         Folio = barcode,
                         Pelicula = pelicula,
                         Horario = horario,
@@ -209,7 +209,7 @@ public class TicketController : ControllerBase
 
             // Regla de Negocio: Si <collected> es igual a "1", lo tomamos como DUPLICADO (ya fue usado).
             // Actualmente es de Solo Lectura.
-            string message = (collected == "1") ? "Orden vÃ¡lida registrada e impresa." : "Orden vÃ¡lida registrada.";
+            string message = (collected == "1") ? "Orden válida registrada e impresa." : "Orden válida registrada.";
 
             finalResponse = new TicketResponse
             {
@@ -222,10 +222,10 @@ public class TicketController : ControllerBase
                 ScannedAt = now
             };
 
-            // Guardar en el historial de escaneos exitosos del dÃ­a
+            // Guardar en el historial de escaneos exitosos del día
             _scannedTickets.TryAdd(barcode, finalResponse);
 
-            // Guardar asÃ­ncronamente en el archivo JSON
+            // Guardar asíncronamente en el archivo JSON
             _ = SaveHistoryAsync();
         }
         else if (resultCode == "3") // Terminal no autorizada
@@ -233,7 +233,7 @@ public class TicketController : ControllerBase
             finalResponse = new TicketResponse
             {
                 Status = "INVALID",
-                Message = "El portal rechazÃ³ la solicitud. Verifica que la terminal estÃ© autorizada para consultar Ã³rdenes (cÃ³d. 3).",
+                Message = "El portal rechazó la solicitud. Verifica que la terminal esté autorizada para consultar órdenes (cód. 3).",
                 Folio = barcode
             };
         }
@@ -242,7 +242,7 @@ public class TicketController : ControllerBase
             finalResponse = new TicketResponse
             {
                 Status = "INVALID",
-                Message = $"El portal devolviÃ³ un error (cÃ³digo: {resultCode}).",
+                Message = $"El portal devolvió un error (código: {resultCode}).",
                 Folio = barcode
             };
         }
@@ -266,18 +266,18 @@ public class TicketController : ControllerBase
     }
 
     // =========================================================================
-    // MÃ©todos privados de ayuda
+    // Métodos privados de ayuda
     // =========================================================================
 
     /// <summary>
-    /// EnvÃ­a una solicitud XML al Sales Portal y devuelve la respuesta parseada.
+    /// Envía una solicitud XML al Sales Portal y devuelve la respuesta parseada.
     /// </summary>
     private async Task<XDocument> SendAdmitOneRequestAsync(string xmlBody)
     {
         var client = _httpClientFactory.CreateClient();
         var content = new FormUrlEncodedContent(new Dictionary<string, string>
         {
-            { "XML", xmlBody }  // El parÃ¡metro DEBE llamarse "XML" segÃºn documentaciÃ³n
+            { "XML", xmlBody }  // El parámetro DEBE llamarse "XML" según documentación
         });
 
         if (_configuration is IConfigurationRoot configRoot)
@@ -336,7 +336,7 @@ public class TicketController : ControllerBase
         }
         finally
         {
-            // Paso 3: Cerrar sesiÃ³n/handle (Se ejecuta siempre para no dejar handles abiertos en el portal)
+            // Paso 3: Cerrar sesión/handle (Se ejecuta siempre para no dejar handles abiertos en el portal)
             try
             {
                 string step3Xml = $"<?xml version=\"1.0\" encoding=\"UTF-8\"?><admitOne requestId=\"530\" terminal=\"{terminalId}\"><handle>{handle}</handle></admitOne>";
@@ -350,42 +350,42 @@ public class TicketController : ControllerBase
     }
 
     /// <summary>
-    /// Extrae el Audit Number del cÃ³digo de barras.
-    /// Soporta formato v1 (12 chars: 9O + 10 dÃ­gitos) y v2 (14 chars: 9O + 10 alfanum + XX).
+    /// Extrae el Audit Number del código de barras.
+    /// Soporta formato v1 (12 chars: 9O + 10 dígitos) y v2 (14 chars: 9O + 10 alfanum + XX).
     /// </summary>
     private static ExtractionResult ExtractAuditNumber(string barcode)
     {
         if (!barcode.StartsWith("9O"))
-            return new ExtractionResult { Success = false, ErrorMessage = "CÃ³digo no vÃ¡lido." };
+            return new ExtractionResult { Success = false, ErrorMessage = "Código no válido." };
 
         if (barcode.Length == 12)
         {
-            // Formato v1: 9O + 10 dÃ­gitos numÃ©ricos
+            // Formato v1: 9O + 10 dígitos numéricos
             string auditPart = barcode.Substring(2, 10);
             if (auditPart.All(char.IsDigit))
                 return new ExtractionResult { Success = true, AuditNumber = auditPart };
 
-            return new ExtractionResult { Success = false, ErrorMessage = "CÃ³digo no vÃ¡lido." };
+            return new ExtractionResult { Success = false, ErrorMessage = "Código no válido." };
         }
 
         if (barcode.Length == 14)
         {
             // Formato v2: 9O + 10 alfanum + XX
             if (!barcode.EndsWith("XX"))
-                return new ExtractionResult { Success = false, ErrorMessage = "CÃ³digo no vÃ¡lido." };
+                return new ExtractionResult { Success = false, ErrorMessage = "Código no válido." };
 
             string auditPart = barcode.Substring(2, 10);
             string numericAudit = new string(auditPart.Where(char.IsDigit).ToArray());
 
             if (string.IsNullOrEmpty(numericAudit))
-                return new ExtractionResult { Success = false, ErrorMessage = "CÃ³digo no vÃ¡lido." };
+                return new ExtractionResult { Success = false, ErrorMessage = "Código no válido." };
 
-            // Rellenar con ceros a la izquierda hasta 10 dÃ­gitos
+            // Rellenar con ceros a la izquierda hasta 10 dígitos
             numericAudit = numericAudit.PadLeft(10, '0');
             return new ExtractionResult { Success = true, AuditNumber = numericAudit };
         }
 
-        return new ExtractionResult { Success = false, ErrorMessage = "CÃ³digo no vÃ¡lido." };
+        return new ExtractionResult { Success = false, ErrorMessage = "Código no válido." };
     }
 
     private void LoadHistoryIfNeeded()
@@ -401,7 +401,7 @@ public class TicketController : ControllerBase
                 var directory = Path.Combine(_env.ContentRootPath, "Logs", "Historico");
                 if (!Directory.Exists(directory)) return;
 
-                // 1. Limpiar archivos viejos (mayores a 7 dÃ­as)
+                // 1. Limpiar archivos viejos (mayores a 7 días)
                 CleanupOldHistoryFiles(directory);
 
                 // 2. Cargar el historial de hoy
@@ -492,3 +492,4 @@ public class ExtractionResult
     public string AuditNumber { get; set; } = string.Empty;
     public string ErrorMessage { get; set; } = string.Empty;
 }
+

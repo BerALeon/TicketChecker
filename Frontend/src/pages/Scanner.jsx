@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { Box, Typography, Button, Paper, IconButton } from '@mui/material';
+import { Box, Typography, Button, Paper, IconButton, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useNavigate } from 'react-router-dom';
+import MenuIcon from '@mui/icons-material/Menu';
 import HistoryIcon from '@mui/icons-material/History';
+import SettingsIcon from '@mui/icons-material/Settings';
 import { validateTicket } from '../services/api';
 
 export default function Scanner() {
@@ -11,6 +13,16 @@ export default function Scanner() {
   const [isScannerActive, setIsScannerActive] = useState(false);
   const scannerRef = useRef(null);
   const navigate = useNavigate();
+
+  const [anchorEl, setAnchorEl] = useState(null);
+  const openMenu = Boolean(anchorEl);
+
+  const handleMenuClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
 
   useEffect(() => {
     scannerRef.current = new Html5Qrcode("reader");
@@ -91,7 +103,7 @@ export default function Scanner() {
 
     } catch (err) {
       console.error('Validation error:', err);
-      setScanResult({ status: 'ERROR', message: 'QR InvÃ¡lido o formato incorrecto.' });
+      setScanResult({ status: 'ERROR', message: 'QR Inválido o formato incorrecto.' });
       setStatusColor('#F44336');
     }
   };
@@ -113,11 +125,33 @@ export default function Scanner() {
       <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: 'primary.main', color: 'white' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <img src="/images/Logo.png" alt="Logo" style={{ height: '32px', borderRadius: '4px' }} />
-          <Typography variant="h6" fontWeight="bold">ValidaciÃ³n de Boletos</Typography>
+          <Typography variant="h6" fontWeight="bold">Validación de Boletos</Typography>
         </Box>
-        <IconButton color="inherit" onClick={() => navigate('/history')}>
-          <HistoryIcon />
-        </IconButton>
+        <Box>
+          <IconButton color="inherit" onClick={handleMenuClick}>
+            <MenuIcon />
+          </IconButton>
+          <Menu
+            anchorEl={anchorEl}
+            open={openMenu}
+            onClose={handleMenuClose}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          >
+            <MenuItem onClick={() => { handleMenuClose(); navigate('/history'); }}>
+              <ListItemIcon>
+                <HistoryIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Historial</ListItemText>
+            </MenuItem>
+            <MenuItem onClick={() => { handleMenuClose(); navigate('/setup'); }}>
+              <ListItemIcon>
+                <SettingsIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Configuración</ListItemText>
+            </MenuItem>
+          </Menu>
+        </Box>
       </Box>
 
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 2 }}>
@@ -139,23 +173,23 @@ export default function Scanner() {
             onClick={toggleScanner}
             sx={{ mt: 3, py: 1.5, fontSize: '1.1rem', fontWeight: 'bold' }}
           >
-            {isScannerActive ? "Apagar EscÃ¡ner" : "Escanear Boletos"}
+            {isScannerActive ? "Apagar Escáner" : "Escanear Boletos"}
           </Button>
         </Box>
         
         {scanResult && (
           <Paper sx={{ p: 4, width: '100%', maxWidth: 400, textAlign: 'center', bgcolor: statusColor, color: 'white' }}>
             <Typography variant="h4" fontWeight="bold" gutterBottom>
-              {scanResult.status === 'VALID' && 'âœ… VÃLIDO'}
-              {scanResult.status === 'INVALID' && 'âŒ INVÃLIDO'}
-              {scanResult.status === 'DUPLICATE' && 'âš ï¸ DUPLICADO'}
-              {scanResult.status === 'ERROR' && 'âŒ ERROR'}
+              {scanResult.status === 'VALID' && '✅ VÁLIDO'}
+              {scanResult.status === 'INVALID' && '❌ INVÁLIDO'}
+              {scanResult.status === 'DUPLICATE' && '⚠️ DUPLICADO'}
+              {scanResult.status === 'ERROR' && '❌ ERROR'}
             </Typography>
             <Typography variant="h6" gutterBottom>{scanResult.message}</Typography>
             {scanResult.folio && (
               <Box sx={{ mt: 2, textAlign: 'left', bgcolor: 'rgba(255,255,255,0.2)', p: 2, borderRadius: 1 }}>
                 <Typography><strong>Folio:</strong> {scanResult.folio}</Typography>
-                {scanResult.pelicula && <Typography><strong>PelÃ­cula:</strong> {scanResult.pelicula}</Typography>}
+                {scanResult.pelicula && <Typography><strong>Película:</strong> {scanResult.pelicula}</Typography>}
                 {scanResult.horario && <Typography><strong>Horario:</strong> {scanResult.horario}</Typography>}
                 {scanResult.asientos && scanResult.asientos.length > 0 && <Typography><strong>Asientos:</strong> {scanResult.asientos.join(', ')}</Typography>}
               </Box>

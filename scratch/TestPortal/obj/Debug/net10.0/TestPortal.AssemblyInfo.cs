@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TestPortal")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+06698aced8ffd2a78d5200470974a59253ec218d")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ecf0cd969c882f33cd56af0184f96ebd418948da")]
 [assembly: System.Reflection.AssemblyProductAttribute("TestPortal")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TestPortal")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

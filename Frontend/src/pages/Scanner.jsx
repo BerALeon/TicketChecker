@@ -35,8 +35,8 @@ export default function Scanner() {
           await scannerRef.current.stop();
         }
         setIsScannerActive(false);
-      } catch {
-        // scanner already stopped
+      } catch (err) {
+        console.warn('Scanner stop warning:', err);
       }
     } else {
       try {
@@ -46,8 +46,8 @@ export default function Scanner() {
           onScanSuccess
         );
         setIsScannerActive(true);
-      } catch {
-        // could not start camera
+      } catch (err) {
+        console.error('Camera start error:', err);
       }
     }
   };
@@ -58,15 +58,16 @@ export default function Scanner() {
         await scannerRef.current.stop();
         setIsScannerActive(false);
       }
-    } catch {
-      // scanner already stopped
+    } catch (err) {
+      console.warn('Scanner stop on success warning:', err);
     }
 
     try {
       let ticketData;
       try {
         ticketData = JSON.parse(decodedText);
-      } catch {
+      } catch (err) {
+        console.debug('No JSON format detected:', err);
         // Fallback for plain text QRs during testing
         ticketData = { folio: decodedText, pelicula: "QR de Prueba" };
       }
@@ -88,7 +89,8 @@ export default function Scanner() {
         setStatusColor('#FF9800'); // Solid Orange
       }
 
-    } catch {
+    } catch (err) {
+      console.error('Validation error:', err);
       setScanResult({ status: 'ERROR', message: 'QR Inválido o formato incorrecto.' });
       setStatusColor('#F44336');
     }

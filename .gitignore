@@ -1,0 +1,7 @@
+Backend/bin/
+Backend/obj/
+Frontend/node_modules/
+publish/
+Logs/
+*.log
+.vs/

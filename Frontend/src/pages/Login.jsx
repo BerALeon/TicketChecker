@@ -14,8 +14,14 @@ export default function Login() {
     try {
       const res = await login(username, password);
       if (res.success) {
-        localStorage.setItem('token', res.token);
-        navigate('/scanner');
+        // Validación estricta para SonarQube (S8475: Browser storage should not be poisoned)
+        const tokenRegex = /^[a-zA-Z0-9\-_./=]+$/;
+        if (typeof res.token === 'string' && tokenRegex.test(res.token)) {
+          localStorage.setItem('token', res.token);
+          navigate('/scanner');
+        } else {
+          setError('El servidor devolvió un token con formato inválido.');
+        }
       } else {
         setError(res.message);
       }

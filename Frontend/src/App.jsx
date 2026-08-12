@@ -6,6 +6,10 @@ import History from './pages/History';
 import { getConfigStatus } from './services/api';
 import { Box, CircularProgress } from '@mui/material';
 
+const ProtectedRoute = ({ isConfigured, children }) => {
+  return isConfigured ? children : <Navigate to="/setup" />;
+};
+
 function App() {
   const [isConfigured, setIsConfigured] = useState(null);
 
@@ -29,9 +33,7 @@ function App() {
     );
   }
 
-  const ProtectedRoute = ({ children }) => {
-    return isConfigured ? children : <Navigate to="/setup" />;
-  };
+
 
   return (
     <Router>
@@ -40,7 +42,7 @@ function App() {
         <Route 
           path="/scanner" 
           element={
-            <ProtectedRoute>
+            <ProtectedRoute isConfigured={isConfigured}>
               <Scanner />
             </ProtectedRoute>
           } 
@@ -48,7 +50,7 @@ function App() {
         <Route 
           path="/history" 
           element={
-            <ProtectedRoute>
+            <ProtectedRoute isConfigured={isConfigured}>
               <History />
             </ProtectedRoute>
           } 

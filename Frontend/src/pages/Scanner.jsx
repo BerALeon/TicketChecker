@@ -86,8 +86,6 @@ export default function Scanner() {
         setStatusColor('#F44336'); // Solid Red
       } else if (res.status === 'DUPLICATE') {
         setStatusColor('#FF9800'); // Solid Orange
-      } else if (res.status === 'OFFLINE_PENDING') {
-        setStatusColor('#2196F3'); // Solid Blue for offline
       }
 
     } catch {
@@ -149,7 +147,6 @@ export default function Scanner() {
               {scanResult.status === 'VALID' && '✅ VÁLIDO'}
               {scanResult.status === 'INVALID' && '❌ INVÁLIDO'}
               {scanResult.status === 'DUPLICATE' && '⚠️ DUPLICADO'}
-              {scanResult.status === 'OFFLINE_PENDING' && '💾 GUARDADO OFFLINE'}
               {scanResult.status === 'ERROR' && '❌ ERROR'}
             </Typography>
             <Typography variant="h6" gutterBottom>{scanResult.message}</Typography>

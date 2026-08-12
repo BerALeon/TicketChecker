@@ -13,10 +13,8 @@ function App() {
     const checkConfig = async () => {
       try {
         const res = await getConfigStatus();
-        console.log('getConfigStatus result:', res);
         setIsConfigured(res.isConfigured);
       } catch (err) {
-        console.error('getConfigStatus error:', err);
         setIsConfigured(false);
       }
     };

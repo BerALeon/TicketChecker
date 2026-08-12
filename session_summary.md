@@ -87,3 +87,20 @@ El desarrollo estÃ¡ 100% funcional y a la espera de un Ãºnico dato de config
 
 ### Tareas Temporales y Pruebas
 - **[A BORRAR DESPUÃ‰S DE PRUEBAS] Log de Debug XML:** Se implementÃ³ una escritura temporal en texto plano en la carpeta `Backend/Logs/Debug/xml_log_YYYYMMDD.txt`. AquÃ­ se guarda todo el cuerpo de las peticiones REQUEST (lo que se manda al Sales Portal) y las respuestas RESPONSE de forma Ã­ntegra. **NOTA IMPORTANTE:** Esta funcionalidad debe ser eliminada del cÃ³digo de `TicketController.cs` una vez que se termine de auditar el sistema, ya que puede generar archivos muy grandes o informaciÃ³n redundante en producciÃ³n.
+
+---
+
+## 12 de Agosto de 2026
+
+### Generación de Release y Despliegue
+- **Scripts de Automatización:** Se verificaron los scripts de PowerShell `publish.ps1` y `build_release.ps1` para compilar automáticamente el Frontend (Vite), publicar el Backend (.NET) como *Self-Contained*, y empaquetar todo en un archivo ZIP de distribución junto con un instalador automático (`Deploy-Server.ps1` y `Deploy.cmd`).
+- **Problema de Archivo Bloqueado:** Durante el empaquetado del ZIP ocurrió un error porque el proceso `Backend.exe` estaba en uso (corriendo en segundo plano localmente). Se determinó que el script de release (`build_release.ps1`) se debe ejecutar siempre con los servicios locales detenidos.
+- **Limpieza de Repositorio:** Se detectó y excluyó del control de versiones (`.gitignore`) la carpeta temporal `deploy_temp` para evitar conflictos en GitHub y limpiar el repositorio tras la creación de releases.
+
+### Solución de Problemas en Producción (Escáner HTTPS)
+- **Problema Reportado:** El usuario reportó que el botón de escanear no hacía nada y que el navegador mandaba una alerta de *"sitio no seguro"*.
+- **Causa Raíz:** Las políticas estrictas de seguridad de navegadores modernos (Chrome, Safari, iOS) prohíben totalmente el uso de *hardware* de cámara a través de conexiones inseguras (HTTP), a menos que sea `localhost`. La librería fallaba silenciosamente y el escáner no iniciaba.
+- **Resolución Implementada (Código):** Se actualizó `Scanner.jsx` agregando una validación con `window.isSecureContext`. Ahora, si la cámara falla por políticas de seguridad HTTP, la aplicación intercepta el error y arroja una alerta explícita en pantalla ("⚠️ ERROR DE SEGURIDAD") explicando al usuario el requerimiento de HTTPS.
+- **Resolución de Infraestructura:** Se le indicaron al cliente las alternativas viables:
+  1. Hospedar la aplicación obligatoriamente bajo **HTTPS** con un certificado SSL (Recomendado).
+  2. Emplear un *workaround* local en dispositivos Android a través de las banderas del navegador (`chrome://flags/#unsafely-treat-insecure-origin-as-secure`) agregando la IP para confiar temporalmente en el origen inseguro.

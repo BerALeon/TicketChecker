@@ -20,7 +20,7 @@ Copy-Item -Path "$BaseDir\publish\*" -Destination "$DeployTemp\App" -Recurse -Fo
 Write-Host "Creando Deploy-Server.ps1..."
 $ps1Content = @"
 `$AppName = "TicketChecker"
-`$TargetDir = "C:\TicketChecker"
+`$TargetDir = "C:\Apps\TicketChecker"
 `$ErrorActionPreference = "Stop"
 
 try { Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force -ErrorAction SilentlyContinue } catch {}
@@ -33,6 +33,7 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 `$ReleaseDir = (Resolve-Path (Join-Path `$PSScriptRoot "..\..")).Path
 `$SourceAppPath = Join-Path `$ReleaseDir "App"
 `$LogDir = Join-Path `$ReleaseDir "Logs"
+if (-not (Test-Path `$LogDir)) { New-Item -ItemType Directory -Force -Path `$LogDir | Out-Null }
 
 Function Write-Log (`$Message, `$Color="White") {
     Write-Host `$Message -ForegroundColor `$Color
@@ -41,23 +42,28 @@ Function Write-Log (`$Message, `$Color="White") {
 
 Write-Log "=== Iniciando Despliegue de `$AppName ===" "Cyan"
 
-Write-Log "Deteniendo proceso `$AppName si esta en ejecucion..."
+Write-Log "Deteniendo y eliminando servicio `$AppName si existe..."
+`$svc = Get-Service -Name `$AppName -ErrorAction SilentlyContinue
+if (`$svc) {
+    Stop-Service -Name `$AppName -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+    sc.exe delete `$AppName
+    Start-Sleep -Seconds 2
+}
 Stop-Process -Name "Backend" -Force -ErrorAction SilentlyContinue
-Start-Sleep -Seconds 2
+Start-Sleep -Seconds 1
 
 Write-Log "Copiando archivos a `$TargetDir..."
 if (-not (Test-Path `$TargetDir)) { New-Item -ItemType Directory -Force -Path `$TargetDir | Out-Null }
 Copy-Item -Path "`$SourceAppPath\*" -Destination `$TargetDir -Recurse -Force
 
-Write-Log "Creando acceso directo..."
-`$WshShell = New-Object -comObject WScript.Shell
-`$Shortcut = `$WshShell.CreateShortcut("`$env:Public\Desktop\`$AppName.lnk")
-`$Shortcut.TargetPath = "`$TargetDir\Backend.exe"
-`$Shortcut.WorkingDirectory = `$TargetDir
-`$Shortcut.Save()
+Write-Log "Instalando y levantando servicio `$AppName..."
+sc.exe create `$AppName binPath= "`$TargetDir\Backend.exe" start= auto
+sc.exe description `$AppName "Servicio Backend de TicketChecker"
+Start-Service -Name `$AppName
 
-Write-Log "Iniciando `$AppName..."
-Start-Process -FilePath "`$TargetDir\Backend.exe" -WorkingDirectory `$TargetDir -WindowStyle Hidden
+Write-Log "Abriendo configuracion en el navegador..."
+Start-Process "http://localhost:5000/setup"
 
 Write-Log "=== Despliegue finalizado exitosamente ===" "Green"
 Start-Sleep -Seconds 3
@@ -76,7 +82,7 @@ Set-Content -Path "$DeployTemp\SPs\SP1\Deploy.cmd" -Value $cmdContent -Encoding 
 # Zipear
 Write-Host "Empaquetando a ZIP..."
 $DateString = Get-Date -Format "yyyyMMdd_HHmm"
-$ZipName = "TicketChecker_V1.0.0.0.1_$DateString.zip"
+$ZipName = "TicketChecker_V1.0.0.0.7_$DateString.zip"
 $ZipPath = Join-Path $DesktopReleaseDir $ZipName
 
 if (Test-Path $ZipPath) { Remove-Item $ZipPath -Force }

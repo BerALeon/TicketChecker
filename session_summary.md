@@ -86,7 +86,7 @@ El desarrollo estÃ¡ 100% funcional y a la espera de un Ãºnico dato de config
   - Se agregÃ³ desactivaciÃ³n de cachÃ© (`cache: 'no-store'`) en el frontend para asegurar transiciones limpias tras guardar.
 
 ### Tareas Temporales y Pruebas
-- **[A BORRAR DESPUÃ‰S DE PRUEBAS] Log de Debug XML:** Se implementÃ³ una escritura temporal en texto plano en la carpeta `Backend/Logs/Debug/xml_log_YYYYMMDD.txt`. AquÃ­ se guarda todo el cuerpo de las peticiones REQUEST (lo que se manda al Sales Portal) y las respuestas RESPONSE de forma Ã­ntegra. **NOTA IMPORTANTE:** Esta funcionalidad debe ser eliminada del cÃ³digo de `TicketController.cs` una vez que se termine de auditar el sistema, ya que puede generar archivos muy grandes o informaciÃ³n redundante en producciÃ³n.
+- ~~**[A BORRAR DESPUÉS DE PRUEBAS] Log de Debug XML:** Se implementó una escritura temporal en texto plano en la carpeta `Backend/Logs/Debug/xml_log_YYYYMMDD.txt`. Aquí se guarda todo el cuerpo de las peticiones REQUEST (lo que se manda al Sales Portal) y las respuestas RESPONSE de forma íntegra. **NOTA IMPORTANTE:** Esta funcionalidad debe ser eliminada del código de `TicketController.cs` una vez que se termine de auditar el sistema, ya que puede generar archivos muy grandes o información redundante en producción.~~ *(Funcionalidad y logs eliminados exitosamente para el paso a Producción)*
 
 ---
 

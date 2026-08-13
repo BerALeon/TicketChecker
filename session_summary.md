@@ -95,7 +95,11 @@ El desarrollo estÃ¡ 100% funcional y a la espera de un Ãºnico dato de config
 - **Auditoría en JSON (`TicketController.cs`):** Se refactorizó la lógica de almacenamiento del historial diario. Anteriormente solo se registraban escaneos exitosos; ahora, el archivo `historial_YYYY-MM-DD.json` actúa como una bitácora de auditoría completa, registrando **todos los intentos** (Válidos, Inválidos, Duplicados, Errores). 
 - **Filtrado en Frontend (`History.jsx`):** A pesar de que el JSON guarda todo, se ajustó el endpoint `/api/ticket/history/today` para que la pantalla del usuario en el celular siga mostrando **exclusivamente** los boletos válidos.
 - **Correcciones en Release (`build_release.ps1`):** Se añadieron comandos explícitos para detener el Servicio de Windows nativo (`Stop-Service TicketChecker -Force`) y matar procesos `Backend.exe` antes de empaquetar, previniendo errores de *"archivo en uso"* al generar el ZIP.
-- **Release Generado:** `TicketChecker_V1.0.0.0.7_20260813_1357.zip`
+- **Ajustes de UI (Diseño Visual):** 
+  - Se configuró la imagen `BG_WM_CNMX.png` como fondo global fijado (fixed) para toda la aplicación.
+  - Se implementó la tipografía local `Maison Neue` cargada desde `/fonts/FontsFree-Net-Maison-Neue-Bold.ttf`.
+  - Se actualizó la paleta de colores del `MUI Theme` para utilizar el color oficial rojo de Cinemex (`#EE2A43` / PANTONE 711 CP) como color principal.
+- **Release Generado:** `TicketChecker_V1.0.0.0.8_20260813_1638.zip` (ubicado en `C:\Users\Rentas 15195\Desktop\release\`)
 
 ### Contexto para Futuros Desarrollos
 - **Identificación de Dispositivos:** Se discutió la posibilidad de guardar un `TerminalId` local por cada dispositivo (celular) usando LocalStorage, en lugar de usar un ID global. La petición fue descartada por el usuario al explicar las limitaciones técnicas de la memoria caché del navegador ante borrados manuales, optándose por mantener la configuración global en el servidor.

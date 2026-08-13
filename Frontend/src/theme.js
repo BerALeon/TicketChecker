@@ -4,7 +4,7 @@ const theme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#E3001B', // Cinemex Red
+      main: '#EE2A43', // Cinemex Red Pantone 711 CP
     },
     secondary: {
       main: '#1A1A1A', // Dark grey/black used in Cinemex branding
@@ -24,7 +24,7 @@ const theme = createTheme({
     },
   },
   typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+    fontFamily: '"Maison Neue", "Roboto", "Helvetica", "Arial", sans-serif',
   },
   components: {
     MuiButton: {

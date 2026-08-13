@@ -1,3 +1,10 @@
+@font-face {
+  font-family: 'Maison Neue';
+  src: url('/fonts/FontsFree-Net-Maison-Neue-Bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+}
+
 :root {
   --text: #6b6375;
   --text-h: #08060d;
@@ -52,11 +59,14 @@
 
 body {
   margin: 0;
-  background-image: url('/images/FONDO-APP.jpg') !important;
-  background-size: cover !important;
-  background-position: center !important;
-  background-attachment: fixed !important;
-  background-color: #1A1A1A !important;
+  padding: 0;
+  background-image: url('/images/BG_WM_CNMX.png') !important;
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  min-height: 100vh;
+  width: 100vw;
 }
 
 #root {

@@ -90,9 +90,9 @@ Compress-Archive -Path "$DeployTemp\*" -DestinationPath $ZipPath -Force
 
 # Limpieza
 Write-Host "Limpiando archivos temporales y publish..."
-Remove-Item -Path $DeployTemp -Recurse -Force
+# Remove-Item -Path $DeployTemp -Recurse -Force
 if (Test-Path "$BaseDir\publish") {
-    Remove-Item -Path "$BaseDir\publish" -Recurse -Force
+    # Remove-Item -Path "$BaseDir\publish" -Recurse -Force
 }
 
 Write-Host "============================================="

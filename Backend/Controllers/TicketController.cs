@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Backend.Models;
 using System;
@@ -26,6 +26,7 @@ public class TicketController : ControllerBase
 
     // Historial de escaneos para la API history/today
     private static readonly ConcurrentDictionary<string, TicketResponse> _scannedTickets = new();
+    private static readonly ConcurrentBag<TicketResponse> _allScans = new();
     private static bool _isHistoryLoaded = false;
     private static readonly object _historyLock = new object();
 
@@ -54,7 +55,7 @@ public class TicketController : ControllerBase
         var extractionResult = ExtractAuditNumber(barcode);
         if (!extractionResult.Success)
         {
-            return Ok(new TicketResponse
+            return LogAndReturn(new TicketResponse
             {
                 Status = "INVALID",
                 Message = extractionResult.ErrorMessage,
@@ -65,7 +66,7 @@ public class TicketController : ControllerBase
         // 1.5 Revisar si ya está en el historial local (fue escaneado en esta sesión)
         if (_scannedTickets.TryGetValue(barcode, out var previousScan))
         {
-            return Ok(new TicketResponse
+            return LogAndReturn(new TicketResponse
             {
                 Status = "DUPLICATE",
                 Message = "Esta orden ya fue registrada anteriormente.",
@@ -115,7 +116,7 @@ public class TicketController : ControllerBase
                     Message = $"Orden '{barcode}' no encontrada en el sistema.",
                     Folio = barcode
                 };
-                return Ok(finalResponse);
+                return LogAndReturn(finalResponse);
             }
 
             string collected = orderNode.Element("collected")?.Value;
@@ -169,7 +170,7 @@ public class TicketController : ControllerBase
 
                 if (funcionTime.Value.Date != now.Date)
                 {
-                    return Ok(new TicketResponse
+                    return LogAndReturn(new TicketResponse
                     {
                         Status = "INVALID",
                         Message = "Este boleto no es para el día de hoy.",
@@ -182,7 +183,7 @@ public class TicketController : ControllerBase
 
                 if (minutesBefore > 20)
                 {
-                    return Ok(new TicketResponse
+                    return LogAndReturn(new TicketResponse
                     {
                         Status = "INVALID",
                         Message = $"Aún es muy temprano. La función es a las {funcionTime.Value:HH:mm}.",
@@ -195,7 +196,7 @@ public class TicketController : ControllerBase
 
                 if (minutesBefore < -50)
                 {
-                    return Ok(new TicketResponse
+                    return LogAndReturn(new TicketResponse
                     {
                         Status = "INVALID",
                         Message = "La función ya ha finalizado o el límite de tiempo expiró.",
@@ -221,12 +222,6 @@ public class TicketController : ControllerBase
                 Asientos = asientosList,
                 ScannedAt = now
             };
-
-            // Guardar en el historial de escaneos exitosos del día
-            _scannedTickets.TryAdd(barcode, finalResponse);
-
-            // Guardar asíncronamente en el archivo JSON
-            _ = SaveHistoryAsync();
         }
         else if (resultCode == "3") // Terminal no autorizada
         {
@@ -247,7 +242,23 @@ public class TicketController : ControllerBase
             };
         }
 
-        return Ok(finalResponse);
+        return LogAndReturn(finalResponse);
+    }
+
+    private IActionResult LogAndReturn(TicketResponse response)
+    {
+        if (!response.ScannedAt.HasValue)
+            response.ScannedAt = DateTime.Now;
+
+        if (response.Status == "VALID" && !string.IsNullOrEmpty(response.Folio))
+        {
+            _scannedTickets.TryAdd(response.Folio, response);
+        }
+
+        _allScans.Add(response);
+        _ = SaveHistoryAsync();
+
+        return Ok(response);
     }
 
     // -------------------------------------------------------------------------
@@ -257,7 +268,7 @@ public class TicketController : ControllerBase
     public IActionResult GetTodayHistory()
     {
         var today = DateTime.Today;
-        var history = _scannedTickets.Values
+        var history = _allScans
             .Where(t => t.Status == "VALID" && t.ScannedAt.HasValue && t.ScannedAt.Value.Date == today)
             .OrderByDescending(t => t.ScannedAt)
             .ToList();
@@ -411,13 +422,37 @@ public class TicketController : ControllerBase
                 if (System.IO.File.Exists(filePath))
                 {
                     var json = System.IO.File.ReadAllText(filePath);
-                    var loadedDict = JsonSerializer.Deserialize<Dictionary<string, TicketResponse>>(json);
-
-                    if (loadedDict != null)
+                    
+                    try 
                     {
-                        foreach (var kvp in loadedDict)
+                        // Intentar cargar como Lista (nuevo formato)
+                        var loadedList = JsonSerializer.Deserialize<List<TicketResponse>>(json);
+                        if (loadedList != null)
                         {
-                            _scannedTickets.TryAdd(kvp.Key, kvp.Value);
+                            foreach (var item in loadedList)
+                            {
+                                _allScans.Add(item);
+                                if (item.Status == "VALID" && !string.IsNullOrEmpty(item.Folio))
+                                {
+                                    _scannedTickets.TryAdd(item.Folio, item);
+                                }
+                            }
+                        }
+                    }
+                    catch 
+                    {
+                        // Fallback a Diccionario (formato viejo)
+                        var loadedDict = JsonSerializer.Deserialize<Dictionary<string, TicketResponse>>(json);
+                        if (loadedDict != null)
+                        {
+                            foreach (var kvp in loadedDict)
+                            {
+                                _allScans.Add(kvp.Value);
+                                if (kvp.Value.Status == "VALID")
+                                {
+                                    _scannedTickets.TryAdd(kvp.Key, kvp.Value);
+                                }
+                            }
                         }
                     }
                 }
@@ -447,8 +482,8 @@ public class TicketController : ControllerBase
             var filePath = Path.Combine(directory, fileName);
 
             var options = new JsonSerializerOptions { WriteIndented = true };
-            // Copiar el diccionario para evitar bloqueos
-            var snapshot = _scannedTickets.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            // Serializar directamente la lista completa de eventos
+            var snapshot = _allScans.ToList();
             var json = JsonSerializer.Serialize(snapshot, options);
 
             await System.IO.File.WriteAllTextAsync(filePath, json);

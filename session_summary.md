@@ -85,8 +85,21 @@ El desarrollo estÃ¡ 100% funcional y a la espera de un Ãºnico dato de config
   - Se agregÃ³ el `ConfigController.cs` en el backend para recibir estos datos y reescribir fÃ­sicamente el `appsettings.json`. Se forzÃ³ la recarga del archivo (`configRoot.Reload()`) para aplicar cambios sin reiniciar el servicio.
   - Se agregÃ³ desactivaciÃ³n de cachÃ© (`cache: 'no-store'`) en el frontend para asegurar transiciones limpias tras guardar.
 
-### Tareas Temporales y Pruebas
-- ~~**[A BORRAR DESPUÉS DE PRUEBAS] Log de Debug XML:** Se implementó una escritura temporal en texto plano en la carpeta `Backend/Logs/Debug/xml_log_YYYYMMDD.txt`. Aquí se guarda todo el cuerpo de las peticiones REQUEST (lo que se manda al Sales Portal) y las respuestas RESPONSE de forma íntegra. **NOTA IMPORTANTE:** Esta funcionalidad debe ser eliminada del código de `TicketController.cs` una vez que se termine de auditar el sistema, ya que puede generar archivos muy grandes o información redundante en producción.~~ *(Funcionalidad y logs eliminados exitosamente para el paso a Producción)*
+### Mejoras de Seguridad y Auditoría (Setup & Historial)
+- **Seguridad en Configuración (`Setup.jsx`):** 
+  - Se implementó la carga automática de la configuración actual desde el backend para evitar re-escribir datos en cada acceso.
+  - Se reemplazaron los placeholders explícitos por textos genéricos ("Ingrese IP", "Ingrese Pto.") para no dar pistas sobre la estructura de la red o IDs.
+  - El botón "Guardar" ahora cuenta con lógica de detección de cambios (solo se habilita si los datos son diferentes a los guardados).
+  - Se incluyó un botón "Cancelar" para salir de forma segura si la terminal ya estaba configurada.
+- **Protección de Acceso (`Scanner.jsx`):** Se añadió un modal de seguridad protegido por la contraseña `Cinemex2026` al intentar acceder a la configuración desde el menú principal.
+- **Auditoría en JSON (`TicketController.cs`):** Se refactorizó la lógica de almacenamiento del historial diario. Anteriormente solo se registraban escaneos exitosos; ahora, el archivo `historial_YYYY-MM-DD.json` actúa como una bitácora de auditoría completa, registrando **todos los intentos** (Válidos, Inválidos, Duplicados, Errores). 
+- **Filtrado en Frontend (`History.jsx`):** A pesar de que el JSON guarda todo, se ajustó el endpoint `/api/ticket/history/today` para que la pantalla del usuario en el celular siga mostrando **exclusivamente** los boletos válidos.
+- **Correcciones en Release (`build_release.ps1`):** Se añadieron comandos explícitos para detener el Servicio de Windows nativo (`Stop-Service TicketChecker -Force`) y matar procesos `Backend.exe` antes de empaquetar, previniendo errores de *"archivo en uso"* al generar el ZIP.
+- **Release Generado:** `TicketChecker_V1.0.0.0.7_20260813_1357.zip`
+
+### Contexto para Futuros Desarrollos
+- **Identificación de Dispositivos:** Se discutió la posibilidad de guardar un `TerminalId` local por cada dispositivo (celular) usando LocalStorage, en lugar de usar un ID global. La petición fue descartada por el usuario al explicar las limitaciones técnicas de la memoria caché del navegador ante borrados manuales, optándose por mantener la configuración global en el servidor.
+- Queda abierta la puerta para implementar un sistema de **Login por Usuario** en futuras versiones si se requiere rastrear qué empleado está operando qué celular.
 
 ---
 
@@ -104,3 +117,17 @@ El desarrollo estÃ¡ 100% funcional y a la espera de un Ãºnico dato de config
 - **Resolución de Infraestructura:** Se le indicaron al cliente las alternativas viables:
   1. Hospedar la aplicación obligatoriamente bajo **HTTPS** con un certificado SSL (Recomendado).
   2. Emplear un *workaround* local en dispositivos Android a través de las banderas del navegador (`chrome://flags/#unsafely-treat-insecure-origin-as-secure`) agregando la IP para confiar temporalmente en el origen inseguro.
+
+---
+
+## 13 de Agosto de 2026
+
+### Despliegue Masivo e Instalador One-Click
+- **Migración a Servicio de Windows:** Se modificó el código del Backend (Program.cs) inyectando UseWindowsService(), permitiendo que el ejecutable funcione como un Servicio de Windows nativo. Esto garantiza encendido automático sin necesidad de inicio de sesión de usuario en los servidores locales.
+- **Instalador Silencioso:** Se reescribió la lógica del instalador (Deploy-Server.ps1) para que, al ejecutarse, registre el servicio mediante sc.exe, lo inicie y abra automáticamente el navegador en la pantalla de Setup. La ruta de instalación por defecto se actualizó a C:\Apps\TicketChecker.
+- **Manejo de Firewall:** Se documentó e implementó (como regla recomendada) la apertura del puerto 5000 mediante New-NetFirewallRule, previniendo errores ERR_CONNECTION_ABORTED en los dispositivos móviles que escanean.
+
+### Mantenimiento y Limpieza
+- **Eliminación de redundancias:** Se eliminó el archivo ppsettings.Development.json para homologar la configuración únicamente en ppsettings.json, simplificando la gestión de variables.
+- **Limpieza de Proyecto:** Se purgó el proyecto eliminando archivos de pruebas (Backend.http), la carpeta temporal scratch y se ejecutó dotnet clean para borrar residuos de compilación (in/obj).
+- **Release V1.0.0.0.7:** Se generó y validó exitosamente la versión final del instalador empaquetado, lista para ser distribuida mediante RDP a los 300 complejos.

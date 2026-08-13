@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using System.IO;
@@ -37,6 +37,11 @@ public class ConfigController : ControllerBase
         var isConfigured = !string.IsNullOrWhiteSpace(url) && 
                            !string.IsNullOrWhiteSpace(terminalId) &&
                            url != "http://0.0.0.0"; 
+
+        if (isConfigured)
+        {
+            return Ok(new { isConfigured, url, terminalId });
+        }
 
         return Ok(new { isConfigured });
     }

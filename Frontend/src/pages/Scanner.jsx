@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Box, Typography, Button, Paper, IconButton, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
+import { Box, Typography, Button, Paper, IconButton, Menu, MenuItem, ListItemIcon, ListItemText, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useNavigate } from 'react-router-dom';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -16,12 +16,33 @@ export default function Scanner() {
 
   const [anchorEl, setAnchorEl] = useState(null);
   const openMenu = Boolean(anchorEl);
+  
+  // Password Modal State
+  const [openPasswordModal, setOpenPasswordModal] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState(false);
 
   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
   };
   const handleMenuClose = () => {
     setAnchorEl(null);
+  };
+
+  const handleConfigClick = () => {
+    handleMenuClose();
+    setPasswordInput('');
+    setPasswordError(false);
+    setOpenPasswordModal(true);
+  };
+
+  const handlePasswordSubmit = () => {
+    if (passwordInput === 'Cinemex2026') {
+      setOpenPasswordModal(false);
+      navigate('/setup');
+    } else {
+      setPasswordError(true);
+    }
   };
 
   useEffect(() => {
@@ -85,7 +106,6 @@ export default function Scanner() {
         ticketData = JSON.parse(decodedText);
       } catch (err) {
         console.debug('No JSON format detected:', err);
-        // Fallback for plain text QRs during testing
         ticketData = { folio: decodedText, pelicula: "QR de Prueba" };
       }
 
@@ -93,17 +113,16 @@ export default function Scanner() {
 
       setScanResult(res);
 
-      // Vibrate if supported
       if (navigator.vibrate) {
         navigator.vibrate([200]);
       }
 
       if (res.status === 'VALID') {
-        setStatusColor('#4CAF50'); // Solid Green
+        setStatusColor('#4CAF50');
       } else if (res.status === 'INVALID') {
-        setStatusColor('#F44336'); // Solid Red
+        setStatusColor('#F44336');
       } else if (res.status === 'DUPLICATE') {
-        setStatusColor('#FF9800'); // Solid Orange
+        setStatusColor('#FF9800');
       }
 
     } catch (err) {
@@ -149,7 +168,7 @@ export default function Scanner() {
               </ListItemIcon>
               <ListItemText>Historial</ListItemText>
             </MenuItem>
-            <MenuItem onClick={() => { handleMenuClose(); navigate('/setup'); }}>
+            <MenuItem onClick={handleConfigClick}>
               <ListItemIcon>
                 <SettingsIcon fontSize="small" />
               </ListItemIcon>
@@ -218,6 +237,39 @@ export default function Scanner() {
           </Paper>
         )}
       </Box>
+
+      {/* Modal de Contraseña para Configuración */}
+      <Dialog open={openPasswordModal} onClose={() => setOpenPasswordModal(false)}>
+        <DialogTitle sx={{ color: 'text.primary', fontWeight: 'bold' }}>Acceso Restringido</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Ingrese la contraseña de administrador para modificar la configuración.
+          </Typography>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Contraseña"
+            type="password"
+            fullWidth
+            variant="outlined"
+            value={passwordInput}
+            onChange={(e) => setPasswordInput(e.target.value)}
+            error={passwordError}
+            helperText={passwordError ? "Contraseña incorrecta" : ""}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handlePasswordSubmit();
+              }
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenPasswordModal(false)}>Cancelar</Button>
+          <Button onClick={handlePasswordSubmit} variant="contained" color="primary">
+            Aceptar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Box, Typography, TextField, Button, Paper, Alert } from '@mui/material';
-import { setupConfig } from '../services/api';
+import { setupConfig, getConfigStatus } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
 export default function Setup({ onSetupComplete }) {
@@ -8,8 +8,47 @@ export default function Setup({ onSetupComplete }) {
   const [ip, setIp] = useState('');
   const [port, setPort] = useState('8001');
   const [terminalId, setTerminalId] = useState('');
+  
+  const [initialIp, setInitialIp] = useState('');
+  const [initialPort, setInitialPort] = useState('8001');
+  const [initialTerminalId, setInitialTerminalId] = useState('');
+  
+  const [isConfiguredState, setIsConfiguredState] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isPageLoading, setIsPageLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const res = await getConfigStatus();
+        if (res.isConfigured) {
+          setIsConfiguredState(true);
+          setInitialTerminalId(res.terminalId);
+          setTerminalId(res.terminalId);
+          
+          if (res.url) {
+            // Extraer IP y Puerto de http://IP:PORT/
+            try {
+              const urlObj = new URL(res.url);
+              setInitialIp(urlObj.hostname);
+              setIp(urlObj.hostname);
+              const p = urlObj.port || '80';
+              setInitialPort(p);
+              setPort(p);
+            } catch (e) {
+              console.warn("Error parsing URL:", res.url);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching config status:", err);
+      } finally {
+        setIsPageLoading(false);
+      }
+    };
+    fetchConfig();
+  }, []);
 
   const handleSetup = async (e) => {
     e.preventDefault();
@@ -37,6 +76,15 @@ export default function Setup({ onSetupComplete }) {
       setIsLoading(false);
     }
   };
+
+  const handleCancel = () => {
+    navigate('/scanner');
+  };
+
+  const isModified = ip !== initialIp || port !== initialPort || terminalId !== initialTerminalId;
+  const isSaveDisabled = isLoading || (isConfiguredState && !isModified);
+
+  if (isPageLoading) return null;
 
   return (
     <Box sx={{
@@ -68,7 +116,7 @@ export default function Setup({ onSetupComplete }) {
               margin="normal"
               value={ip}
               onChange={(e) => setIp(e.target.value)}
-              placeholder="10.55.55.78"
+              placeholder="Ingrese IP"
               disabled={isLoading}
             />
             <TextField
@@ -77,7 +125,7 @@ export default function Setup({ onSetupComplete }) {
               margin="normal"
               value={port}
               onChange={(e) => setPort(e.target.value)}
-              placeholder="8001"
+              placeholder="Ingrese Pto."
               disabled={isLoading}
               sx={{ width: '120px' }}
             />
@@ -89,20 +137,35 @@ export default function Setup({ onSetupComplete }) {
             margin="normal"
             value={terminalId}
             onChange={(e) => setTerminalId(e.target.value)}
-            placeholder="DE-PIL2-A1"
+            placeholder="Ingrese ID de Terminal"
             disabled={isLoading}
           />
-          <Button
-            type="submit"
-            fullWidth
-            variant="contained"
-            color="primary"
-            size="large"
-            disabled={isLoading}
-            sx={{ mt: 3, py: 1.5, fontWeight: 'bold' }}
-          >
-            {isLoading ? 'Guardando...' : 'Guardar y Continuar'}
-          </Button>
+          <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
+            {isConfiguredState && (
+              <Button
+                variant="outlined"
+                color="inherit"
+                fullWidth
+                size="large"
+                onClick={handleCancel}
+                disabled={isLoading}
+                sx={{ py: 1.5, fontWeight: 'bold' }}
+              >
+                Cancelar
+              </Button>
+            )}
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              color="primary"
+              size="large"
+              disabled={isSaveDisabled}
+              sx={{ py: 1.5, fontWeight: 'bold' }}
+            >
+              {isLoading ? 'Guardando...' : 'Guardar y Continuar'}
+            </Button>
+          </Box>
         </form>
       </Paper>
     </Box>

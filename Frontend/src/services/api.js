@@ -7,11 +7,11 @@ export const getConfigStatus = async () => {
   return res.json();
 };
 
-export const setupConfig = async (url, terminalId) => {
+export const setupConfig = async (url, terminalId, scannerMode) => {
   const res = await fetch(`${API_URL}/config/setup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url, terminalId })
+    body: JSON.stringify({ url, terminalId, scannerMode })
   });
   return res.json();
 };

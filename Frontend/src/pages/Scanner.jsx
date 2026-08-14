@@ -5,12 +5,14 @@ import { useNavigate } from 'react-router-dom';
 import MenuIcon from '@mui/icons-material/Menu';
 import HistoryIcon from '@mui/icons-material/History';
 import SettingsIcon from '@mui/icons-material/Settings';
-import { validateTicket } from '../services/api';
+import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
+import { validateTicket, getConfigStatus } from '../services/api';
 
 export default function Scanner() {
   const [scanResult, setScanResult] = useState(null);
   const [statusColor, setStatusColor] = useState('transparent');
   const [isScannerActive, setIsScannerActive] = useState(false);
+  const [scannerMode, setScannerMode] = useState('Camera');
   const scannerRef = useRef(null);
   const navigate = useNavigate();
 
@@ -44,6 +46,14 @@ export default function Scanner() {
       setPasswordError(true);
     }
   };
+
+  useEffect(() => {
+    getConfigStatus().then(res => {
+      if (res.scannerMode) {
+        setScannerMode(res.scannerMode);
+      }
+    }).catch(console.error);
+  }, []);
 
   useEffect(() => {
     scannerRef.current = new Html5Qrcode("reader");
@@ -132,6 +142,38 @@ export default function Scanner() {
     }
   };
 
+  useEffect(() => {
+    if (scannerMode !== 'USB') return;
+
+    let barcodeBuffer = '';
+    let lastKeyTime = Date.now();
+
+    const handleKeyDown = (e) => {
+      // Ignorar lectura si hay un modal abierto o hay un resultado en pantalla
+      if (openPasswordModal || openMenu || scanResult) return;
+
+      const currentTime = Date.now();
+      
+      // Si el tiempo entre teclas es muy largo, no es un scanner USB
+      if (currentTime - lastKeyTime > 50) {
+        barcodeBuffer = ''; 
+      }
+      lastKeyTime = currentTime;
+
+      if (e.key === 'Enter') {
+        if (barcodeBuffer.length > 0) {
+          onScanSuccess(barcodeBuffer);
+          barcodeBuffer = '';
+        }
+      } else if (e.key.length === 1) { // Caracteres normales
+        barcodeBuffer += e.key;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [scannerMode, openPasswordModal, openMenu, scanResult]);
+
   const handleAcceptResult = () => {
     setScanResult(null);
     setStatusColor('transparent');
@@ -180,25 +222,40 @@ export default function Scanner() {
 
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 2 }}>
         <Box sx={{ display: scanResult ? 'none' : 'block', width: '100%', maxWidth: 400, position: 'relative' }}>
-          <div className="scanner-container" style={{ minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: isScannerActive ? 'transparent' : 'rgba(0,0,0,0.1)', borderRadius: '8px' }}>
-            {isScannerActive && (
+          <div className="scanner-container" style={{ minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: isScannerActive && scannerMode === 'Camera' ? 'transparent' : 'rgba(0,0,0,0.1)', borderRadius: '8px', overflow: 'hidden' }}>
+            {isScannerActive && scannerMode === 'Camera' && (
               <>
                 <div className="scanner-guides"></div>
                 <div className="scan-line"></div>
               </>
             )}
-            <Box id="reader" sx={{ width: '100%', overflow: 'hidden', borderRadius: 2 }} />
+            
+            {scannerMode === 'Camera' ? (
+              <Box id="reader" sx={{ width: '100%', overflow: 'hidden', borderRadius: 2 }} />
+            ) : (
+              <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                <QrCodeScannerIcon sx={{ fontSize: 80, color: 'primary.main', mb: 2, opacity: 0.8 }} />
+                <Typography variant="h5" fontWeight="bold" gutterBottom>
+                  Escáner Listo
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Este dispositivo se conecta por USB. El sistema está listo para leer el código.
+                </Typography>
+              </Box>
+            )}
           </div>
           
-          <Button 
-            variant="contained"
-            color={isScannerActive ? "error" : "primary"}
-            fullWidth
-            onClick={toggleScanner}
-            sx={{ mt: 3, py: 1.5, fontSize: '1.1rem', fontWeight: 'bold' }}
-          >
-            {isScannerActive ? "Apagar Escáner" : "Escanear Boletos"}
-          </Button>
+          {scannerMode === 'Camera' && (
+            <Button 
+              variant="contained"
+              color={isScannerActive ? "error" : "primary"}
+              fullWidth
+              onClick={toggleScanner}
+              sx={{ mt: 3, py: 1.5, fontSize: '1.1rem', fontWeight: 'bold' }}
+            >
+              {isScannerActive ? "Apagar Escáner" : "Escanear Boletos"}
+            </Button>
+          )}
         </Box>
         
         {scanResult && (

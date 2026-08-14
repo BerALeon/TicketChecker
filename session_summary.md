@@ -136,3 +136,19 @@ El desarrollo estÃ¡ 100% funcional y a la espera de un Ãºnico dato de config
 ### Contexto para Futuros Desarrollos
 - **Identificación de Dispositivos:** Se discutió la posibilidad de guardar un `TerminalId` local por cada dispositivo (celular) usando LocalStorage, en lugar de usar un ID global. La petición fue descartada por el usuario al explicar las limitaciones técnicas de la memoria caché del navegador ante borrados manuales, optándose por mantener la configuración global en el servidor.
 - Queda abierta la puerta para implementar un sistema de **Login por Usuario** en futuras versiones si se requiere rastrear qué empleado está operando qué celular.
+
+---
+
+## 14 de Agosto de 2026
+
+### Preparación para Nuevo Desarrollo
+- **Respaldo y Control de Versiones:** Se generó una etiqueta de Git (`pre-major-change`) para resguardar la versión estable (V1.0.0). Se creó y se cambió a una nueva rama (`feature/major-update`) para desarrollar los nuevos cambios importantes de forma segura.
+
+### Soporte para Modos de Escáner (Cámara vs USB)
+- **Configuración de Hardware:** Se modificó la pantalla de configuración inicial (`Setup.jsx`) para permitir a los administradores elegir el método de entrada: "Cámara del Dispositivo" o "Pistola Escáner (USB)".
+- **Persistencia de Modo:** El modo de escaneo seleccionado (`ScannerMode`) se envía y se almacena globalmente en el archivo `appsettings.json` del servidor, por medio de la actualización del `ConfigController.cs`.
+- **Adaptación Dinámica de UI (`Scanner.jsx`):** 
+  - Si el modo configurado es **Cámara**, la interfaz despliega el lector de video y botón flotante de manera tradicional.
+  - Si el modo configurado es **USB**, la cámara se deshabilita por completo (ahorrando batería) y se oculta el UI. En su lugar, se muestra un aviso de "Escáner Listo" y se habilita un *Event Listener* de teclado global (`window.addEventListener('keydown')`) que atrapa de forma invisible los códigos inyectados por la pistola USB, auto-disparando la validación cuando detecta la tecla `Enter`.
+  - Se agregó lógica de bloqueo al listener del teclado para prevenir escaneos fantasmas cuando el menú o el modal de contraseña del administrador están abiertos.
+- **Nuevo Release Generado:** `TicketChecker_V1.0.0.0.11_20260814_1059.zip`

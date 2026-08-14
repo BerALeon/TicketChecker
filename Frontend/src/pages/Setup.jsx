@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Box, Typography, TextField, Button, Paper, Alert } from '@mui/material';
+import { Box, Typography, TextField, Button, Paper, Alert, Radio, RadioGroup, FormControlLabel, FormControl, FormLabel } from '@mui/material';
 import { setupConfig, getConfigStatus } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
@@ -8,10 +8,12 @@ export default function Setup({ onSetupComplete }) {
   const [ip, setIp] = useState('');
   const [port, setPort] = useState('8001');
   const [terminalId, setTerminalId] = useState('');
+  const [scannerMode, setScannerMode] = useState('Camera');
   
   const [initialIp, setInitialIp] = useState('');
   const [initialPort, setInitialPort] = useState('8001');
   const [initialTerminalId, setInitialTerminalId] = useState('');
+  const [initialScannerMode, setInitialScannerMode] = useState('Camera');
   
   const [isConfiguredState, setIsConfiguredState] = useState(false);
   const [error, setError] = useState('');
@@ -26,6 +28,8 @@ export default function Setup({ onSetupComplete }) {
           setIsConfiguredState(true);
           setInitialTerminalId(res.terminalId);
           setTerminalId(res.terminalId);
+          setInitialScannerMode(res.scannerMode || 'Camera');
+          setScannerMode(res.scannerMode || 'Camera');
           
           if (res.url) {
             // Extraer IP y Puerto de http://IP:PORT/
@@ -63,7 +67,7 @@ export default function Setup({ onSetupComplete }) {
 
     setIsLoading(true);
     try {
-      const res = await setupConfig(constructedUrl, terminalId);
+      const res = await setupConfig(constructedUrl, terminalId, scannerMode);
       if (res.message && res.message.includes('exitosamente')) {
         onSetupComplete();
         navigate('/scanner');
@@ -81,7 +85,7 @@ export default function Setup({ onSetupComplete }) {
     navigate('/scanner');
   };
 
-  const isModified = ip !== initialIp || port !== initialPort || terminalId !== initialTerminalId;
+  const isModified = ip !== initialIp || port !== initialPort || terminalId !== initialTerminalId || scannerMode !== initialScannerMode;
   const isSaveDisabled = isLoading || (isConfiguredState && !isModified);
 
   if (isPageLoading) return null;
@@ -140,6 +144,18 @@ export default function Setup({ onSetupComplete }) {
             placeholder="Ingrese ID de Terminal"
             disabled={isLoading}
           />
+
+          <FormControl component="fieldset" sx={{ mt: 2, width: '100%' }}>
+            <FormLabel component="legend">Modo de Escáner</FormLabel>
+            <RadioGroup
+              row
+              value={scannerMode}
+              onChange={(e) => setScannerMode(e.target.value)}
+            >
+              <FormControlLabel value="Camera" control={<Radio />} label="Cámara del Dispositivo" disabled={isLoading} />
+              <FormControlLabel value="USB" control={<Radio />} label="Pistola Escáner (USB)" disabled={isLoading} />
+            </RadioGroup>
+          </FormControl>
           <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
             {isConfiguredState && (
               <Button

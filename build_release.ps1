@@ -82,7 +82,7 @@ Set-Content -Path "$DeployTemp\SPs\SP1\Deploy.cmd" -Value $cmdContent -Encoding 
 # Zipear
 Write-Host "Empaquetando a ZIP..."
 $DateString = Get-Date -Format "yyyyMMdd_HHmm"
-$ZipName = "TicketChecker_V1.0.0.0.7_$DateString.zip"
+$ZipName = "TicketChecker_V1.0.0.0.11_$DateString.zip"
 $ZipPath = Join-Path $DesktopReleaseDir $ZipName
 
 if (Test-Path $ZipPath) { Remove-Item $ZipPath -Force }

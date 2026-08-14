@@ -33,6 +33,7 @@ public class ConfigController : ControllerBase
 
         var url = _configuration["SalesPortal:Url"];
         var terminalId = _configuration["SalesPortal:TerminalId"];
+        var scannerMode = _configuration["SalesPortal:ScannerMode"] ?? "Camera";
 
         var isConfigured = !string.IsNullOrWhiteSpace(url) && 
                            !string.IsNullOrWhiteSpace(terminalId) &&
@@ -40,7 +41,7 @@ public class ConfigController : ControllerBase
 
         if (isConfigured)
         {
-            return Ok(new { isConfigured, url, terminalId });
+            return Ok(new { isConfigured, url, terminalId, scannerMode });
         }
 
         return Ok(new { isConfigured });
@@ -67,6 +68,7 @@ public class ConfigController : ControllerBase
             }
             jsonNode["SalesPortal"]["Url"] = request.Url;
             jsonNode["SalesPortal"]["TerminalId"] = request.TerminalId;
+            jsonNode["SalesPortal"]["ScannerMode"] = string.IsNullOrWhiteSpace(request.ScannerMode) ? "Camera" : request.ScannerMode;
 
             var options = new JsonSerializerOptions { WriteIndented = true };
             await System.IO.File.WriteAllTextAsync(appSettingsPath, jsonNode.ToJsonString(options));
@@ -87,5 +89,6 @@ public class SetupRequest
 {
     public string Url { get; set; } = string.Empty;
     public string TerminalId { get; set; } = string.Empty;
+    public string ScannerMode { get; set; } = string.Empty;
 }
 

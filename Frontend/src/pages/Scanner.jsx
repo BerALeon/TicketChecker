@@ -131,7 +131,7 @@ export default function Scanner() {
         setStatusColor('#4CAF50');
       } else if (res.status === 'INVALID') {
         setStatusColor('#F44336');
-      } else if (res.status === 'DUPLICATE') {
+      } else if (res.status === 'DUPLICATE' || res.status === 'EARLY') {
         setStatusColor('#FF9800');
       }
 
@@ -262,6 +262,7 @@ export default function Scanner() {
           <Paper sx={{ p: 4, width: '100%', maxWidth: 400, textAlign: 'center', bgcolor: statusColor, color: 'white' }}>
             <Typography variant="h4" fontWeight="bold" gutterBottom>
               {scanResult.status === 'VALID' && '✅ VÁLIDO'}
+              {scanResult.status === 'EARLY' && '⚠️ MUY TEMPRANO'}
               {scanResult.status === 'INVALID' && '❌ INVÁLIDO'}
               {scanResult.status === 'DUPLICATE' && '⚠️ DUPLICADO'}
               {scanResult.status === 'ERROR' && '❌ ERROR'}

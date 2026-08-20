@@ -15,6 +15,7 @@ if (-not (Test-Path $DesktopReleaseDir)) {
 # Copiar App
 Write-Host "Copiando binarios..."
 Copy-Item -Path "$BaseDir\publish\*" -Destination "$DeployTemp\App" -Recurse -Force
+if (Test-Path "$DeployTemp\App\Logs") { Remove-Item -Path "$DeployTemp\App\Logs" -Recurse -Force }
 
 # Crear script PS1
 Write-Host "Creando Deploy-Server.ps1..."
@@ -82,7 +83,7 @@ Set-Content -Path "$DeployTemp\SPs\SP1\Deploy.cmd" -Value $cmdContent -Encoding 
 # Zipear
 Write-Host "Empaquetando a ZIP..."
 $DateString = Get-Date -Format "yyyyMMdd_HHmm"
-$ZipName = "TicketChecker_V1.0.0.0.11_$DateString.zip"
+$ZipName = "TicketChecker_V1.0.0.0.17_$DateString.zip"
 $ZipPath = Join-Path $DesktopReleaseDir $ZipName
 
 if (Test-Path $ZipPath) { Remove-Item $ZipPath -Force }

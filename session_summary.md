@@ -152,3 +152,36 @@ El desarrollo estÃ¡ 100% funcional y a la espera de un Ãºnico dato de config
   - Si el modo configurado es **USB**, la cámara se deshabilita por completo (ahorrando batería) y se oculta el UI. En su lugar, se muestra un aviso de "Escáner Listo" y se habilita un *Event Listener* de teclado global (`window.addEventListener('keydown')`) que atrapa de forma invisible los códigos inyectados por la pistola USB, auto-disparando la validación cuando detecta la tecla `Enter`.
   - Se agregó lógica de bloqueo al listener del teclado para prevenir escaneos fantasmas cuando el menú o el modal de contraseña del administrador están abiertos.
 - **Nuevo Release Generado:** `TicketChecker_V1.0.0.0.11_20260814_1059.zip`
+
+---
+
+## 17 de Agosto de 2026
+
+### Soporte Ampliado de Códigos y Corrección de Release
+- **Soporte para Prefijo 9G:** Se modificó la lógica de extracción del backend en `TicketController.cs` para soportar y decodificar correctamente códigos de barras de orden (Order Level Barcodes) que inicien con el prefijo `9G`, al igual que los `9O`.
+- **Análisis de Ticket Level Barcodes:** Mediante revisión de la documentación oficial, se descubrió que códigos anómalos de 10 dígitos escaneados (ej. `0560340086`) corresponden realmente a códigos a nivel de boleto (*Ticket Level Barcode*), compuestos por ID de Función y de Asiento, por lo que el portal no los reconoce al consultarlos como Órdenes. Esto queda asentado para futuros desarrollos.
+- **Corrección de Empaquetado (Release):** Se modificó `build_release.ps1` para eliminar explícitamente la carpeta `Logs` del empaquetado final, previniendo que los nuevos despliegues arrastren historiales locales del servidor anterior.
+- **Explicación de Logging:** Se detalló que los errores críticos del servicio se reportan automáticamente al *Visor de Eventos de Windows* (Event Viewer), mientras que la auditoría de negocio va al archivo JSON.
+- **Release Final Generado:** `TicketChecker_V1.0.0.0.13_20260817_1812.zip` (ubicado en el Escritorio)
+
+
+---
+
+## 18 de Agosto de 2026
+
+### Integración de Endpoint 570 para Boletos Individuales (9G)
+- **Ruta Dual en Backend:** Se refactorizó la lógica en `TicketController.cs` para soportar dos flujos de validación distintos. Los códigos con prefijo `9O` siguen utilizando la lógica original de 3 pasos (query order). Los códigos con prefijo `9G` (Ticket Level) se rutean hacia un nuevo método que envía el XML completo usando el `requestId="570".- **Mapeo de Nodos XML:** Se desarrolló la lógica para extraer correctamente la película, el horario, y la lista de asientos directamente de la respuesta del nodo `570`, adaptándolo a la estructura de la interfaz (React).- **Interpretación de Errores:** Se mapeó el nodo `<validation>` para considerar `0` como válido, y cualquier otro número como inválido exponiendo el texto provisto en `<resultDetails>`.- **Actualización y Release:** Se actualizó la documentación del sistema para reflejar el comportamiento real de los códigos `9G` y se empaquetó exitosamente la nueva versión de producción (`TicketChecker_V1.0.0.0.14_20260818_1925.zip`).
+
+---
+
+## 19 de Agosto de 2026
+
+### Ajustes en Reglas de Negocio (Códigos 9G y 9O)
+- **Traducción de Errores (Sales Portal):** Se implementó la traducción de los mensajes devueltos en la etiqueta `<resultDetails>` por el endpoint 570 (para códigos `9G`), ya que se presentaban en inglés ("Too Early", "Not Found", "Invalid Date", etc.).
+- **Deduplicación Local Prioritaria:** Se ajustó la regla de negocio para el mensaje `"Already Validated"`. Si el servidor de Cinemex indica que un boleto `9G` ya fue validado, pero nuestra aplicación no lo tiene en su historial local, **se asume como boleto VÁLIDO y de primer ingreso** (Traducción: "Boleto válido (Ya registrado en servidor)"). Nuestra memoria local es ahora la única fuente de verdad para marcar un boleto como DUPLICADO.
+- **Validación de Horario Local (Estricta):** Se igualó la lógica de tiempo de los códigos `9O` a los códigos `9G`. En lugar de esperar a que el servidor de Cinemex marque un boleto como "Too Early", la aplicación parsea directamente la etiqueta `<perfTime>` y aplica una validación estricta local: no se permite el ingreso antes de 20 minutos de la función, ni 50 minutos después, y debe ser estrictamente para el día actual.
+
+### Estandarización de Interfaz de Usuario
+- **Alerta de Horario Temprano:** Se creó un nuevo estado interno (`Status: "EARLY"`) devuelto por el Backend cuando el cliente intenta ingresar más de 20 minutos antes.
+- En el Frontend (`Scanner.jsx`), este estado se intercepta para pintar una alerta **Amarilla/Naranja** estandarizada (similar a los duplicados) con el ícono de advertencia y el mensaje **"⚠️ MUY TEMPRANO"**, reemplazando la X roja genérica de error, lo que mejora la claridad para el personal de puerta.
+- **Releases Desplegados:** Se generaron iterativamente las versiones `.15`, `.16` y `.17` para integrar y probar estos cambios. Release actual: `TicketChecker_V1.0.0.0.17_20260819_1642.zip`.

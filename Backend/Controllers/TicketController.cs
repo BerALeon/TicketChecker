@@ -82,7 +82,14 @@ public class TicketController : ControllerBase
         XDocument portalXml;
         try
         {
-            portalXml = await QueryOrderDetailsAsync(extractionResult.AuditNumber);
+            if (extractionResult.Prefix == "9G")
+            {
+                portalXml = await QueryTicketBarcodeAsync(barcode);
+            }
+            else
+            {
+                portalXml = await QueryOrderDetailsAsync(extractionResult.AuditNumber);
+            }
         }
         catch (HttpRequestException ex)
         {
@@ -102,144 +109,247 @@ public class TicketController : ControllerBase
         string resultCode = admitoneNode.Attribute("result")?.Value ?? "-1";
         TicketResponse finalResponse;
 
-        if (resultCode == "0") // 0 = Éxito
+        if (extractionResult.Prefix == "9G")
         {
-            var ordersNode = admitoneNode.Element("orders");
-            var orderNode = ordersNode?.Element("order");
-
-            if (orderNode == null)
+            if (resultCode == "0")
             {
-                // Si la respuesta fue exitosa pero no trajo una orden, significa que no encontró el folio.
-                finalResponse = new TicketResponse
+                string validation = admitoneNode.Element("validation")?.Value ?? "-1";
+                string resultDetails = admitoneNode.Element("resultDetails")?.Value ?? string.Empty;
+                string perfName = admitoneNode.Element("perfName")?.Value ?? string.Empty;
+                string hallName = admitoneNode.Element("hallName")?.Value ?? string.Empty;
+                string seatLabel = admitoneNode.Element("seatLabel")?.Value ?? string.Empty;
+                string perfTime = admitoneNode.Element("perfTime")?.Value ?? string.Empty;
+
+                string horario = string.Empty;
+                DateTime? funcionTime = null;
+                if (!string.IsNullOrEmpty(perfTime) && perfTime.Length >= 14)
                 {
-                    Status = "INVALID",
-                    Message = $"Orden '{barcode}' no encontrada en el sistema.",
-                    Folio = barcode
-                };
-                return LogAndReturn(finalResponse);
-            }
-
-            string collected = orderNode.Element("collected")?.Value;
-
-            // Intentar extraer el nombre de la película, horario y asientos desde orderItems -> orderItem
-            string pelicula = string.Empty;
-            string horario = string.Empty;
-            DateTime? funcionTime = null;
-            List<string> asientosList = new();
-
-            var firstOrderItem = orderNode.Element("orderItems")?.Elements("orderItem").FirstOrDefault();
-            if (firstOrderItem != null)
-            {
-                pelicula = firstOrderItem.Element("eventName")?.Value ?? string.Empty;
-
-                var timeNode = firstOrderItem.Element("time");
-                if (timeNode != null && timeNode.Value.Length >= 14)
-                {
-                    var t = timeNode.Value; // e.g. 20260811201000
-                    horario = $"{t.Substring(6, 2)}/{t.Substring(4, 2)}/{t.Substring(0, 4)} {t.Substring(8, 2)}:{t.Substring(10, 2)}";
-                    
-                    if (DateTime.TryParseExact(t.Substring(0, 14), "yyyyMMddHHmmss", null, System.Globalization.DateTimeStyles.None, out var parsedDate))
+                    horario = $"{perfTime.Substring(6, 2)}/{perfTime.Substring(4, 2)}/{perfTime.Substring(0, 4)} {perfTime.Substring(8, 2)}:{perfTime.Substring(10, 2)}";
+                    if (DateTime.TryParseExact(perfTime.Substring(0, 14), "yyyyMMddHHmmss", null, System.Globalization.DateTimeStyles.None, out var parsedDate))
                     {
                         funcionTime = parsedDate;
                     }
                 }
 
-                var seatsNode = firstOrderItem.Element("seats")?.Element("allocated");
-                if (seatsNode != null && !string.IsNullOrEmpty(seatsNode.Value))
+                List<string> asientosList = new();
+                if (!string.IsNullOrEmpty(seatLabel))
                 {
-                    var seatParts = seatsNode.Value.Split('/');
-                    foreach (var part in seatParts)
+                    asientosList.AddRange(seatLabel.Split(','));
+                }
+                else
+                {
+                    asientosList.Add("N/A");
+                }
+
+                // Validación de Fecha y Hora local (misma que 9O)
+                if (funcionTime.HasValue)
+                {
+                    var diff = funcionTime.Value - now;
+                    var minutesBefore = diff.TotalMinutes;
+
+                    if (funcionTime.Value.Date != now.Date)
                     {
-                        var chunks = part.Split(':');
-                        if (chunks.Length >= 3)
-                        {
-                            asientosList.Add($"{chunks[2]}-{chunks[1]}");
-                        }
+                        return LogAndReturn(new TicketResponse { Status = "INVALID", Message = "Este boleto no es para el día de hoy.", Folio = barcode, Pelicula = perfName, Horario = horario, Asientos = asientosList });
+                    }
+
+                    if (minutesBefore > 20)
+                    {
+                        return LogAndReturn(new TicketResponse { Status = "EARLY", Message = $"Aún es muy temprano. La función es a las {funcionTime.Value:HH:mm}.", Folio = barcode, Pelicula = perfName, Horario = horario, Asientos = asientosList });
+                    }
+
+                    if (minutesBefore < -50)
+                    {
+                        return LogAndReturn(new TicketResponse { Status = "INVALID", Message = "La función ya ha finalizado o el límite de tiempo expiró.", Folio = barcode, Pelicula = perfName, Horario = horario, Asientos = asientosList });
                     }
                 }
+
+                if (resultDetails.Equals("Too Early", StringComparison.OrdinalIgnoreCase))
+                    resultDetails = "Aún es muy temprano.";
+                else if (resultDetails.Equals("Already Validated", StringComparison.OrdinalIgnoreCase))
+                    resultDetails = "Boleto válido (Ya registrado en servidor).";
+                else if (resultDetails.Equals("Valid", StringComparison.OrdinalIgnoreCase))
+                    resultDetails = "Boleto válido.";
+                else if (resultDetails.Equals("Not Found", StringComparison.OrdinalIgnoreCase))
+                    resultDetails = "Boleto no encontrado.";
+                else if (resultDetails.Equals("Invalid Date", StringComparison.OrdinalIgnoreCase))
+                    resultDetails = "Fecha inválida.";
+                else if (resultDetails.Equals("Wrong Complex", StringComparison.OrdinalIgnoreCase))
+                    resultDetails = "Complejo incorrecto.";
+
+                bool isValid = (validation == "0" || resultDetails == "Boleto válido." || resultDetails == "Boleto válido (Ya registrado en servidor).");
+                string defaultMessage = isValid ? "Boleto válido." : $"Boleto inválido (Cód: {validation})";
+
+                finalResponse = new TicketResponse
+                {
+                    Status = isValid ? "VALID" : (resultDetails == "Aún es muy temprano." ? "EARLY" : "INVALID"),
+                    Message = string.IsNullOrEmpty(resultDetails) ? defaultMessage : resultDetails,
+                    Folio = barcode,
+                    Pelicula = perfName,
+                    Horario = horario,
+                    Asientos = asientosList,
+                    ScannedAt = now
+                };
             }
-
-            if (asientosList.Count == 0)
-                asientosList.Add("N/A");
-
-            // Validación de Fecha y Hora
-            if (funcionTime.HasValue)
+            else if (resultCode == "3")
             {
-                var diff = funcionTime.Value - now;
-                var minutesBefore = diff.TotalMinutes; // Positivo si es en el futuro
-
-                if (funcionTime.Value.Date != now.Date)
+                finalResponse = new TicketResponse
                 {
-                    return LogAndReturn(new TicketResponse
-                    {
-                        Status = "INVALID",
-                        Message = "Este boleto no es para el día de hoy.",
-                        Folio = barcode,
-                        Pelicula = pelicula,
-                        Horario = horario,
-                        Asientos = asientosList
-                    });
-                }
-
-                if (minutesBefore > 20)
-                {
-                    return LogAndReturn(new TicketResponse
-                    {
-                        Status = "INVALID",
-                        Message = $"Aún es muy temprano. La función es a las {funcionTime.Value:HH:mm}.",
-                        Folio = barcode,
-                        Pelicula = pelicula,
-                        Horario = horario,
-                        Asientos = asientosList
-                    });
-                }
-
-                if (minutesBefore < -50)
-                {
-                    return LogAndReturn(new TicketResponse
-                    {
-                        Status = "INVALID",
-                        Message = "La función ya ha finalizado o el límite de tiempo expiró.",
-                        Folio = barcode,
-                        Pelicula = pelicula,
-                        Horario = horario,
-                        Asientos = asientosList
-                    });
-                }
+                    Status = "INVALID",
+                    Message = "El portal rechazó la solicitud. Verifica que la terminal esté autorizada para consultar órdenes (cód. 3).",
+                    Folio = barcode
+                };
             }
-
-            // Regla de Negocio: Si <collected> es igual a "1", lo tomamos como DUPLICADO (ya fue usado).
-            // Actualmente es de Solo Lectura.
-            string message = (collected == "1") ? "Orden válida registrada e impresa." : "Orden válida registrada.";
-
-            finalResponse = new TicketResponse
+            else
             {
-                Status = "VALID",
-                Message = message,
-                Folio = barcode,
-                Pelicula = pelicula,
-                Horario = horario,
-                Asientos = asientosList,
-                ScannedAt = now
-            };
-        }
-        else if (resultCode == "3") // Terminal no autorizada
-        {
-            finalResponse = new TicketResponse
-            {
-                Status = "INVALID",
-                Message = "El portal rechazó la solicitud. Verifica que la terminal esté autorizada para consultar órdenes (cód. 3).",
-                Folio = barcode
-            };
+                finalResponse = new TicketResponse
+                {
+                    Status = "INVALID",
+                    Message = $"El portal devolvió un error (código: {resultCode}).",
+                    Folio = barcode
+                };
+            }
         }
         else
         {
-            finalResponse = new TicketResponse
+            if (resultCode == "0") // 0 = Éxito
             {
-                Status = "INVALID",
-                Message = $"El portal devolvió un error (código: {resultCode}).",
-                Folio = barcode
-            };
+                var ordersNode = admitoneNode.Element("orders");
+                var orderNode = ordersNode?.Element("order");
+
+                if (orderNode == null)
+                {
+                    // Si la respuesta fue exitosa pero no trajo una orden, significa que no encontró el folio.
+                    finalResponse = new TicketResponse
+                    {
+                        Status = "INVALID",
+                        Message = $"Boleto '{barcode}' no encontrado.",
+                        Folio = barcode
+                    };
+                    return LogAndReturn(finalResponse);
+                }
+
+                string collected = orderNode.Element("collected")?.Value;
+
+                // Intentar extraer el nombre de la película, horario y asientos desde orderItems -> orderItem
+                string pelicula = string.Empty;
+                string horario = string.Empty;
+                DateTime? funcionTime = null;
+                List<string> asientosList = new();
+
+                var firstOrderItem = orderNode.Element("orderItems")?.Elements("orderItem").FirstOrDefault();
+                if (firstOrderItem != null)
+                {
+                    pelicula = firstOrderItem.Element("eventName")?.Value ?? string.Empty;
+
+                    var timeNode = firstOrderItem.Element("time");
+                    if (timeNode != null && timeNode.Value.Length >= 14)
+                    {
+                        var t = timeNode.Value; // e.g. 20260811201000
+                        horario = $"{t.Substring(6, 2)}/{t.Substring(4, 2)}/{t.Substring(0, 4)} {t.Substring(8, 2)}:{t.Substring(10, 2)}";
+
+                        if (DateTime.TryParseExact(t.Substring(0, 14), "yyyyMMddHHmmss", null, System.Globalization.DateTimeStyles.None, out var parsedDate))
+                        {
+                            funcionTime = parsedDate;
+                        }
+                    }
+
+                    var seatsNode = firstOrderItem.Element("seats")?.Element("allocated");
+                    if (seatsNode != null && !string.IsNullOrEmpty(seatsNode.Value))
+                    {
+                        var seatParts = seatsNode.Value.Split('/');
+                        foreach (var part in seatParts)
+                        {
+                            var chunks = part.Split(':');
+                            if (chunks.Length >= 3)
+                            {
+                                asientosList.Add($"{chunks[2]}-{chunks[1]}");
+                            }
+                        }
+                    }
+                }
+
+                if (asientosList.Count == 0)
+                    asientosList.Add("N/A");
+
+                // Validación de Fecha y Hora
+                if (funcionTime.HasValue)
+                {
+                    var diff = funcionTime.Value - now;
+                    var minutesBefore = diff.TotalMinutes; // Positivo si es en el futuro
+
+                    if (funcionTime.Value.Date != now.Date)
+                    {
+                        return LogAndReturn(new TicketResponse
+                        {
+                            Status = "INVALID",
+                            Message = "Este boleto no es para el día de hoy.",
+                            Folio = barcode,
+                            Pelicula = pelicula,
+                            Horario = horario,
+                            Asientos = asientosList
+                        });
+                    }
+
+                    if (minutesBefore > 20)
+                    {
+                        return LogAndReturn(new TicketResponse
+                        {
+                            Status = "EARLY",
+                            Message = $"Aún es muy temprano. La función es a las {funcionTime.Value:HH:mm}.",
+                            Folio = barcode,
+                            Pelicula = pelicula,
+                            Horario = horario,
+                            Asientos = asientosList
+                        });
+                    }
+
+                    if (minutesBefore < -50)
+                    {
+                        return LogAndReturn(new TicketResponse
+                        {
+                            Status = "INVALID",
+                            Message = "La función ya ha finalizado o el límite de tiempo expiró.",
+                            Folio = barcode,
+                            Pelicula = pelicula,
+                            Horario = horario,
+                            Asientos = asientosList
+                        });
+                    }
+                }
+
+                // Regla de Negocio: Si <collected> es igual a "1", lo tomamos como DUPLICADO (ya fue usado).
+                // Actualmente es de Solo Lectura.
+                string message = (collected == "1") ? "Orden válida registrada e impresa." : "Orden válida registrada.";
+
+                finalResponse = new TicketResponse
+                {
+                    Status = "VALID",
+                    Message = message,
+                    Folio = barcode,
+                    Pelicula = pelicula,
+                    Horario = horario,
+                    Asientos = asientosList,
+                    ScannedAt = now
+                };
+            }
+            else if (resultCode == "3") // Terminal no autorizada
+            {
+                finalResponse = new TicketResponse
+                {
+                    Status = "INVALID",
+                    Message = "El portal rechazó la solicitud. Verifica que la terminal esté autorizada para consultar órdenes (cód. 3).",
+                    Folio = barcode
+                };
+            }
+            else
+            {
+                finalResponse = new TicketResponse
+                {
+                    Status = "INVALID",
+                    Message = $"El portal devolvió un error (código: {resultCode}).",
+                    Folio = barcode
+                };
+            }
         }
 
         return LogAndReturn(finalResponse);
@@ -298,7 +408,7 @@ public class TicketController : ControllerBase
 
         var salesPortalUrl = _configuration["SalesPortal:Url"] ?? string.Empty;
 
-        if (!Uri.TryCreate(salesPortalUrl, UriKind.Absolute, out var uriResult) || 
+        if (!Uri.TryCreate(salesPortalUrl, UriKind.Absolute, out var uriResult) ||
             (uriResult.Scheme != Uri.UriSchemeHttp && uriResult.Scheme != Uri.UriSchemeHttps))
         {
             throw new InvalidOperationException("La URL configurada para el Sales Portal no es válida o segura.");
@@ -361,27 +471,38 @@ public class TicketController : ControllerBase
     }
 
     /// <summary>
+    /// Ejecuta el flujo para boletos a nivel de ticket (Ticket Level Barcode, ej. 9G).
+    /// </summary>
+    private async Task<XDocument> QueryTicketBarcodeAsync(string barcode)
+    {
+        string xml = $"<?xml version=\"1.0\" encoding=\"UTF-8\"?><admitOne requestId=\"570\"><barCode>{barcode}</barCode><version>4</version></admitOne>";
+        return await SendAdmitOneRequestAsync(xml);
+    }
+
+    /// <summary>
     /// Extrae el Audit Number del código de barras.
-    /// Soporta formato v1 (12 chars: 9O + 10 dígitos) y v2 (14 chars: 9O + 10 alfanum + XX).
+    /// Soporta formato v1 (12 chars: 9O o 9G + 10 dígitos) y v2 (14 chars: 9O o 9G + 10 alfanum + XX).
     /// </summary>
     private static ExtractionResult ExtractAuditNumber(string barcode)
     {
-        if (!barcode.StartsWith("9O"))
+        if (!barcode.StartsWith("9O") && !barcode.StartsWith("9G"))
             return new ExtractionResult { Success = false, ErrorMessage = "Código no válido." };
+
+        string prefix = barcode.Substring(0, 2);
 
         if (barcode.Length == 12)
         {
-            // Formato v1: 9O + 10 dígitos numéricos
+            // Formato v1: 9O o 9G + 10 dígitos numéricos
             string auditPart = barcode.Substring(2, 10);
             if (auditPart.All(char.IsDigit))
-                return new ExtractionResult { Success = true, AuditNumber = auditPart };
+                return new ExtractionResult { Success = true, AuditNumber = auditPart, Prefix = prefix };
 
             return new ExtractionResult { Success = false, ErrorMessage = "Código no válido." };
         }
 
         if (barcode.Length == 14)
         {
-            // Formato v2: 9O + 10 alfanum + XX
+            // Formato v2: 9O o 9G + 10 alfanum + XX
             if (!barcode.EndsWith("XX"))
                 return new ExtractionResult { Success = false, ErrorMessage = "Código no válido." };
 
@@ -393,7 +514,7 @@ public class TicketController : ControllerBase
 
             // Rellenar con ceros a la izquierda hasta 10 dígitos
             numericAudit = numericAudit.PadLeft(10, '0');
-            return new ExtractionResult { Success = true, AuditNumber = numericAudit };
+            return new ExtractionResult { Success = true, AuditNumber = numericAudit, Prefix = prefix };
         }
 
         return new ExtractionResult { Success = false, ErrorMessage = "Código no válido." };
@@ -422,8 +543,8 @@ public class TicketController : ControllerBase
                 if (System.IO.File.Exists(filePath))
                 {
                     var json = System.IO.File.ReadAllText(filePath);
-                    
-                    try 
+
+                    try
                     {
                         // Intentar cargar como Lista (nuevo formato)
                         var loadedList = JsonSerializer.Deserialize<List<TicketResponse>>(json);
@@ -439,7 +560,7 @@ public class TicketController : ControllerBase
                             }
                         }
                     }
-                    catch 
+                    catch
                     {
                         // Fallback a Diccionario (formato viejo)
                         var loadedDict = JsonSerializer.Deserialize<Dictionary<string, TicketResponse>>(json);
@@ -526,5 +647,6 @@ public class ExtractionResult
     public bool Success { get; set; }
     public string AuditNumber { get; set; } = string.Empty;
     public string ErrorMessage { get; set; } = string.Empty;
+    public string Prefix { get; set; } = string.Empty;
 }
 
